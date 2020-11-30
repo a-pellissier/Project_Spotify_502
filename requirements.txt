@@ -34,3 +34,4 @@ librosa
 audioread
 pydub
 python-dotenv
+spotipy
