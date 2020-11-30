@@ -33,3 +33,4 @@ pydot
 librosa
 audioread
 pydub
+utils
