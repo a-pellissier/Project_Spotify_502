@@ -19,7 +19,7 @@ from scipy import stats
 import pandas as pd
 import librosa
 from tqdm import tqdm
-import utils
+import Project_Spotify_502.utils as utils
 
 
 def columns():
