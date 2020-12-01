@@ -35,3 +35,4 @@ audioread
 pydub
 python-dotenv
 spotipy
+tensorflow
