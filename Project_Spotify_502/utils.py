@@ -208,14 +208,8 @@ def load(filepath):
         for column in COLUMNS:
             tracks[column] = pd.to_datetime(tracks[column])
 
-        SUBSETS = ('small', 'medium', 'large')
-        try:
-            tracks['set', 'subset'] = tracks['set', 'subset'].astype(
-                    'category', categories=SUBSETS, ordered=True)
-        except ValueError:
-            # the categories and ordered arguments were removed in pandas 0.25
-            tracks['set', 'subset'] = tracks['set', 'subset'].astype(
-                     pd.CategoricalDtype(categories=SUBSETS, ordered=True))
+        SUBSETS = pd.api.types.CategoricalDtype(categories=['small', 'medium', 'large'], ordered=True)
+        tracks['set', 'subset'] = tracks['set', 'subset'].astype(SUBSETS)
 
         COLUMNS = [('track', 'genre_top'), ('track', 'license'),
                    ('album', 'type'), ('album', 'information'),
