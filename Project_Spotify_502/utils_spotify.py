@@ -89,11 +89,8 @@ class Data:
         return os.path.join(audio_dir, tid_str[:3], tid_str + '.mp3')
 
 
-    def generate_size(self, df = None, size = 'medium', subset = 'training', path = None):
+    def generate_size(self, df, size = 'medium', subset = 'training'):
         '''Acceptable sizes = small, medium, large''' 
-        
-        if df == None:
-            df = self.load(path)
         return df[df['set', 'subset'] <= size]
 
     def generate_subset(self, df, subset = 'training'): 
