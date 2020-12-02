@@ -10,6 +10,7 @@ import multiprocessing.sharedctypes as sharedctypes
 import os.path
 import ast
 import librosa
+import csv
 
 # path_x = '../raw_data/fma_medium'
 # path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -153,7 +154,7 @@ class Data_DL(Data):
         return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
 
     def generator_spectogram(self, filename): 
-        x, sr = librosa.load(filename, sr=None, duration = 29.976598639455784, mono=True)
+        x, sr = librosa.load(filename, sr=44100, duration = 29.976598639455784, mono=True)
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
         return mel, sr
@@ -183,16 +184,45 @@ class Data_DL(Data):
         X_train = np.array([X[i, :, :] for i in index_train])
         X_val = np.array([X[i, :, :] for i in index_val])
         X_test = np.array([X[i, :, :] for i in index_test])
-        return (X_train, X_val, X_test), (y_train, y_val, y_test)
 
-    def save_X_y(self, path_X, path_y):
-        X, y = self.generate_X_y_subsets(path_X, path_y)
+        def format_y(y): 
+            index = [key for key, value in filenames.items() if key in list(y.index)]
+            y = y[y.index.isin(index)]
+            y = pd.DataFrame(y)
+            y.reset_index(inplace = True)
+            y.columns = [''.join(col) for col in y.columns.values]
+            y.rename({'trackgenre_top' : 'genre'}, axis = 1, inplace = True)
+            y['id'] = y['track_id'].map(filenames)
+            y.set_index('id', inplace = True, drop = True)
+            return y.sort_index()
+
+        y_train = format_y(y_train)
+        y_val = format_y(y_val)
+        y_test = format_y(y_test)
+
+        return (X_train, X_val, X_test), (y_train, y_val, y_test), filenames
+
+    def save_X_y(self, path_X = None, path_y = None):
+
+        if path_X == None: 
+            path_X = self.path_x_dl
+        if path_y == None: 
+            path_y = self.path_y
+
+        X, y, filenames = self.generate_X_y_subsets(path_X, path_y)
         X_train, X_val, X_test = X
         y_train, y_val, y_test = y
         np.save('X_train.npy', X_train)
-        np.save('y_train.npy', y_train)
         np.save('X_val.npy', X_val)
-        np.save('y_val.npy', y_val)
         np.save('X_test.npy', X_test)
-        np.save('y_test.npy', y_test)
+
+        y_val.to_csv('y_val.csv')
+        y_train.to_csv('y_train.csv')
+        y_train.to_csv('y_test.csv')
+
+        w = csv.writer(open("filenames.csv", "w"))
+
+        for key, val in filenames.items():
+            w.writerow([key, val])
+
         return None
