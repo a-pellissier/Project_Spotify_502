@@ -9,6 +9,7 @@ import multiprocessing
 import multiprocessing.sharedctypes as sharedctypes
 import os.path
 import ast
+import librosa
 
 path_x = '../raw_data/fma_medium'
 path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -243,7 +244,7 @@ def list_of_files(path):
     return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
 
 def generator_spectogram(filename): 
-    x, sr = librosa.load(filename, sr=None, mono=True)
+    x, sr = librosa.load(filename, sr=None, duration = 29.976598639455784, mono=True)
     stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
     mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
     return mel, sr
