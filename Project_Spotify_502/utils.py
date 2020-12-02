@@ -241,10 +241,10 @@ def get_audio_path(audio_dir, track_id):
 # function to generate X and y for DL and datasets for ML
 
 def list_of_files(path):
-    return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
+    return [os.path.join(path, file) for file in os.listdir(path)]
 
 def generator_spectogram(filename): 
-    x, sr = librosa.load(filename, sr=None, duration = 29.976598639455784, mono=True)
+    x, sr = librosa.load(filename, sr=None, duration=29.976575963718822, mono=True)
     stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
     mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
     return mel, sr
