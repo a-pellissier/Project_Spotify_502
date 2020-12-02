@@ -24,7 +24,7 @@ SAMPLING_RATE = 44100
 dotenv.load_dotenv(dotenv.find_dotenv())
 
 
-class Data:
+class Data():
 
     # getting the csv absolute path
     abs_path = __file__.replace('Project_Spotify_502/utils_spotify.py', '')
@@ -144,6 +144,38 @@ class Data_ML(Data):
 
     def __init__(self):
         return None
+
+    def get_data_numeric(self, set_size, nb_genres):
+        # Load complete datasets
+        tracks = self.load(self.path_y)
+        features = self.load(self.path_x_ml)
+
+        # Select columns =  set_size, set_split & target
+        tracks_b = tracks[[('set', 'subset'), ('set', 'split'), ('track', 'genre_top')]]
+        tracks_b.columns = tracks_b.columns.droplevel(0)
+
+        # Select relevant set sizing
+        tracks_m = tracks_b[tracks_b.subset <= set_size]
+
+        # get top_genres
+        genres = tracks_m.genre_top.value_counts().head(nb_genres).index.to_list()
+        tracks_cl = tracks_m[tracks_m.genre_top.isin(genres)]
+
+        # get split indexes
+        train_index = tracks_cl[tracks_cl['split'] == 'training'].index
+        val_index = tracks_cl[tracks_cl['split'] == 'validation'].index
+        test_index = tracks_cl[tracks_cl['split'] == 'test'].index
+
+        # train/val/test split
+        X_train = features.loc[train_index]
+        X_val = features.loc[val_index]
+        X_test = features.loc[test_index]
+
+        y_train = tracks_cl.loc[train_index, 'genre_top']
+        y_val = tracks_cl.loc[val_index, 'genre_top']
+        y_test = tracks_cl.loc[test_index, 'genre_top']
+
+        return (X_train, X_val, X_test), (y_train, y_val, y_test)
 
 
 class Data_DL(Data):
