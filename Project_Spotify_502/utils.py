@@ -10,6 +10,8 @@ import multiprocessing.sharedctypes as sharedctypes
 import os.path
 import ast
 
+path_x = '../raw_data/fma_medium'
+path_y = '../raw_data/fma_metadata/tracks.csv'
 
 # Number of samples per 30s audio clip.
 # TODO: fix dataset to be constant.
