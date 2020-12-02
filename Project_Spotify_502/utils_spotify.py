@@ -11,8 +11,8 @@ import os.path
 import ast
 import librosa
 
-path_x = '../raw_data/fma_medium'
-path_y = '../raw_data/fma_metadata/tracks.csv'
+# path_x = '../raw_data/fma_medium'
+# path_y = '../raw_data/fma_metadata/tracks.csv'
 
 # Number of samples per 30s audio clip.
 # TODO: fix dataset to be constant.
@@ -25,8 +25,11 @@ dotenv.load_dotenv(dotenv.find_dotenv())
 
 class Data:
 
-    path_x = path_x
-    path_y = path_y
+    # getting the csv absolute path
+    abs_path = __file__.replace('Project_Spotify_502/utils_spotify.py', '')
+    path_x_dl = os.path.join('/',abs_path, 'raw_data/fma_medium')
+    path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
+    path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
 
     def __init__(self): 
         return None
@@ -87,25 +90,48 @@ class Data:
 
 
     def generate_size(self, df = None, size = 'medium', subset = 'training', path = None):
+        '''Acceptable sizes = small, medium, large''' 
+        
         if df == None:
             df = self.load(path)
         return df[df['set', 'subset'] <= size]
 
     def generate_subset(self, df, subset = 'training'): 
+        '''Generates dataset corresponding to the subset indicated
+        Acceptable subsets = training, validation, test'''
         return df[df['set', 'split'] == subset]
 
-    def generate_dataset(self, path, size = 'medium'): 
-        tracks_medium = self.generate_size(self.load(path))
+    def generate_dataset(self, size = 'medium'): 
+        '''Generates the whole dataset based on tracks.csv
+        Acceptable sizes = small, medium, large'''
+
+        # gets the tracks.csv path
+        path = self.path_y
+
+        # generates the dataset corresponding on the size 
+        tracks_medium = self.generate_size(self.load(path), size = size)
         
         data_train = self.generate_subset(tracks_medium)
         data_val = self.generate_subset(tracks_medium, subset = 'validation')
         data_test = self.generate_subset(tracks_medium, subset = 'test')
         return data_train, data_val, data_test
 
-    def generate_y(self, path, size = 'medium', nb_genres = 8): 
-        data_train, data_val, data_test = self.generate_dataset(path, size)
+    def generate_y(self, size = 'medium', nb_genres = 8): 
+        '''Generates y (track_id and corresponding genre) based on dataset
+        Acceptable sizes = small, medium, large'''
+
+        # gets tracks.csv path
+        path = self.path_y
+
+        # generates the dataset 
+        data_train, data_val, data_test = self.generate_dataset(path, size = size)
+
         y_train = data_train[('track', 'genre_top')]
+
+        # generates list of genres based on number of tracks
         genres = list(y_train.value_counts().head(nb_genres).index)
+
+        # filters sub_datasets
         y_train = y_train[y_train.isin(genres)]
         y_val = data_val.loc[data_val[('track', 'genre_top')].isin(genres),('track', 'genre_top')]
         y_test = data_test.loc[data_test[('track', 'genre_top')].isin(genres),('track', 'genre_top')]
