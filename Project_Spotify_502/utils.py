@@ -10,6 +10,8 @@ import multiprocessing.sharedctypes as sharedctypes
 import os.path
 import ast
 
+path_x = '../raw_data/fma_medium'
+path_y = '../raw_data/fma_metadata/tracks.csv'
 
 # Number of samples per 30s audio clip.
 # TODO: fix dataset to be constant.
@@ -234,6 +236,74 @@ def get_audio_path(audio_dir, track_id):
     tid_str = '{:06d}'.format(track_id)
     return os.path.join(audio_dir, tid_str[:3], tid_str + '.mp3')
 
+
+# function to generate X and y for DL and datasets for ML
+
+def list_of_files(path):
+    return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
+
+def generator_spectogram(filename): 
+    x, sr = librosa.load(filename, sr=None, mono=True)
+    stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
+    mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
+    return mel, sr
+
+def generate_X(path):
+    filenames = list_of_files(path) 
+    spectrograms = []
+    for filename in filenames: 
+        mel, sr  = generator_spectogram(filename)
+        spectrograms.append(mel)
+    filenames = [int(filename[-10:-4].lstrip('0')) for filename in filenames]
+    filenames = {track_id : index for index, track_id in enumerate(filenames)}
+    return np.array(spectrograms), filenames
+
+def generate_size(df, size = 'medium'):
+    return df[df['set', 'subset'] <= size]
+
+def generate_subset(df, subset = 'training'): 
+    return df[df['set', 'split'] == subset]
+
+def generate_dataset(path, size = 'medium'): 
+    tracks_medium = generate_size(load(path))
+    
+    data_train = generate_subset(tracks_medium)
+    data_val = generate_subset(tracks_medium, subset = 'validation')
+    data_test = generate_subset(tracks_medium, subset = 'test')
+    return data_train, data_val, data_test
+
+def generate_y(path, size = 'medium', nb_genres = 8): 
+    data_train, data_val, data_test = generate_dataset(path, size)
+    y_train = data_train[('track', 'genre_top')]
+    genres = list(y_train.value_counts().head(nb_genres).index)
+    y_train = y_train[y_train.isin(genres)]
+    y_val = data_val.loc[data_val[('track', 'genre_top')].isin(genres),('track', 'genre_top')]
+    y_test = data_test.loc[data_test[('track', 'genre_top')].isin(genres),('track', 'genre_top')]
+    
+    return y_train, y_val, y_test
+
+def generate_X_y_subsets(path_X, path_y): 
+    X, filenames = generate_X(path_X)
+    y_train, y_val, y_test = generate_y(path_y)
+    index_train = [value for key, value in filenames.items() if key in list(y_train.index)]
+    index_val = [value for key, value in filenames.items() if key in list(y_val.index)]
+    index_test = [value for key, value in filenames.items() if key in list(y_test.index)]
+    X_train = np.array([X[i, :, :] for i in index_train])
+    X_val = np.array([X[i, :, :] for i in index_val])
+    X_test = np.array([X[i, :, :] for i in index_test])
+    return (X_train, X_val, X_test), (y_train, y_val, y_test)
+
+def save_X_y(path_X, path_y):
+    X, y = generate_X_y_subsets(path_X, path_y)
+    X_train, X_val, X_test = X
+    y_train, y_val, y_test = y
+    np.save('X_train.npy', X_train)
+    np.save('y_train.npy', y_train)
+    np.save('X_val.npy', X_val)
+    np.save('y_val.npy', y_val)
+    np.save('X_test.npy', X_test)
+    np.save('y_test.npy', y_test)
+    return None
 
 class Loader:
     def load(self, filepath):
