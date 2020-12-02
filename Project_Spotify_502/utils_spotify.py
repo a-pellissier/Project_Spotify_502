@@ -32,7 +32,7 @@ class Data:
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
 
-    def __init__(self): 
+    def __init__(self):
         return None
 
     def load(self, filepath):
@@ -90,32 +90,33 @@ class Data:
         return os.path.join(audio_dir, tid_str[:3], tid_str + '.mp3')
 
 
-    def generate_size(self, df, size = 'medium', subset = 'training'):
-        '''Acceptable sizes = small, medium, large''' 
+    def generate_size(self, df, size = 'medium'):
+        '''Acceptable sizes = small, medium, large'''
         return df[df['set', 'subset'] <= size]
 
-    def generate_subset(self, df, subset = 'training'): 
+    def generate_subset(self, df, subset = 'training'):
         '''Generates dataset corresponding to the subset indicated
         Acceptable subsets = training, validation, test'''
         return df[df['set', 'split'] == subset]
 
-    def generate_dataset(self, path = None, size = 'medium'): 
+    def generate_dataset(self, path = None, size = 'medium'):
         '''Generates the whole dataset based on tracks.csv
         Acceptable sizes = small, medium, large'''
 
         # gets the tracks.csv path
-        if path == None: 
+        if path == None:
             path = self.path_y
 
-        # generates the dataset corresponding on the size 
+        # generates the dataset corresponding on the size
         tracks_medium = self.generate_size(self.load(path), size = size)
-        
-        data_train = self.generate_subset(tracks_medium)
+
+        data_train = self.generate_subset(tracks_medium, subset = 'training')
         data_val = self.generate_subset(tracks_medium, subset = 'validation')
         data_test = self.generate_subset(tracks_medium, subset = 'test')
+
         return data_train, data_val, data_test
 
-    def generate_y(self, path = None, size = 'medium', nb_genres = 8): 
+    def generate_y(self, path = None, size = 'medium', nb_genres = 8):
         '''Generates y (track_id and corresponding genre) based on dataset
         Acceptable sizes = small, medium, large'''
 
@@ -123,7 +124,7 @@ class Data:
         if path == None:
             path = self.path_y
 
-        # generates the dataset 
+        # generates the dataset
         data_train, data_val, data_test = self.generate_dataset(path, size = size)
 
         y_train = data_train[('track', 'genre_top')]
@@ -135,46 +136,46 @@ class Data:
         y_train = y_train[y_train.isin(genres)]
         y_val = data_val.loc[data_val[('track', 'genre_top')].isin(genres),('track', 'genre_top')]
         y_test = data_test.loc[data_test[('track', 'genre_top')].isin(genres),('track', 'genre_top')]
-        
+
         return y_train, y_val, y_test
 
 
 class Data_ML(Data):
 
-    def __init__(self): 
+    def __init__(self):
         return None
 
 
 class Data_DL(Data):
 
-    def __init__(self): 
+    def __init__(self):
         return None
 
     def list_of_files(self, path):
         return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
 
-    def generator_spectogram(self, filename): 
+    def generator_spectogram(self, filename):
         x, sr = librosa.load(filename, sr=44100, duration = 29.976598639455784, mono=True)
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
         return mel, sr
 
     def generate_X(self, path = None):
-        if path == None: 
+        if path == None:
             path = self.path_x_dl
-        filenames = self.list_of_files(path) 
+        filenames = self.list_of_files(path)
         spectrograms = []
-        for filename in filenames: 
+        for filename in filenames:
             mel, sr  = self.generator_spectogram(filename)
             spectrograms.append(mel)
         filenames = [int(filename[-10:-4].lstrip('0')) for filename in filenames]
         filenames = {track_id : index for index, track_id in enumerate(filenames)}
         return np.array(spectrograms), filenames
 
-    def generate_X_y_subsets(self, path_X = None, path_y = None): 
-        if path_X == None: 
+    def generate_X_y_subsets(self, path_X = None, path_y = None):
+        if path_X == None:
             path_X = self.path_x_dl
-        if path_y == None: 
+        if path_y == None:
             path_y = self.path_y
         X, filenames = self.generate_X(path_X)
         y_train, y_val, y_test = self.generate_y(path_y)
@@ -185,7 +186,7 @@ class Data_DL(Data):
         X_val = np.array([X[i, :, :] for i in index_val])
         X_test = np.array([X[i, :, :] for i in index_test])
 
-        def format_y(y): 
+        def format_y(y):
             index = [key for key, value in filenames.items() if key in list(y.index)]
             y = y[y.index.isin(index)]
             y = pd.DataFrame(y)
@@ -204,9 +205,9 @@ class Data_DL(Data):
 
     def save_X_y(self, path_X = None, path_y = None):
 
-        if path_X == None: 
+        if path_X == None:
             path_X = self.path_x_dl
-        if path_y == None: 
+        if path_y == None:
             path_y = self.path_y
 
         X, y, filenames = self.generate_X_y_subsets(path_X, path_y)
@@ -226,3 +227,10 @@ class Data_DL(Data):
             w.writerow([key, val])
 
         return None
+
+
+
+
+
+
+
