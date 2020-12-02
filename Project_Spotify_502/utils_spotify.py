@@ -98,12 +98,13 @@ class Data:
         Acceptable subsets = training, validation, test'''
         return df[df['set', 'split'] == subset]
 
-    def generate_dataset(self, size = 'medium'): 
+    def generate_dataset(self, path = None, size = 'medium'): 
         '''Generates the whole dataset based on tracks.csv
         Acceptable sizes = small, medium, large'''
 
         # gets the tracks.csv path
-        path = self.path_y
+        if path == None: 
+            path = self.path_y
 
         # generates the dataset corresponding on the size 
         tracks_medium = self.generate_size(self.load(path), size = size)
@@ -113,12 +114,13 @@ class Data:
         data_test = self.generate_subset(tracks_medium, subset = 'test')
         return data_train, data_val, data_test
 
-    def generate_y(self, size = 'medium', nb_genres = 8): 
+    def generate_y(self, path = None, size = 'medium', nb_genres = 8): 
         '''Generates y (track_id and corresponding genre) based on dataset
         Acceptable sizes = small, medium, large'''
 
         # gets tracks.csv path
-        path = self.path_y
+        if path == None:
+            path = self.path_y
 
         # generates the dataset 
         data_train, data_val, data_test = self.generate_dataset(path, size = size)
@@ -156,7 +158,9 @@ class Data_DL(Data):
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
         return mel, sr
 
-    def generate_X(self, path):
+    def generate_X(self, path = None):
+        if path == None: 
+            path = self.path_x_dl
         filenames = self.list_of_files(path) 
         spectrograms = []
         for filename in filenames: 
@@ -166,7 +170,11 @@ class Data_DL(Data):
         filenames = {track_id : index for index, track_id in enumerate(filenames)}
         return np.array(spectrograms), filenames
 
-    def generate_X_y_subsets(self, path_X, path_y): 
+    def generate_X_y_subsets(self, path_X = None, path_y = None): 
+        if path_X == None: 
+            path_X = self.path_x_dl
+        if path_y == None: 
+            path_y = self.path_y
         X, filenames = self.generate_X(path_X)
         y_train, y_val, y_test = self.generate_y(path_y)
         index_train = [value for key, value in filenames.items() if key in list(y_train.index)]
