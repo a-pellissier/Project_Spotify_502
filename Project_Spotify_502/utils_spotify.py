@@ -228,6 +228,7 @@ class Data_DL(Data):
         filenames = self.list_of_files(path_X, directory)
         for filename in filenames:
             temp = int(filename[-10:-4])
+            subset = None
             if temp in list(y_train.index):
                 subset = 'train'
                 classe = y_train[temp]
@@ -237,6 +238,8 @@ class Data_DL(Data):
             if temp in list(y_val.index):
                 subset = 'val'
                 classe = y_val[temp]
+            if subset == None:
+                continue 
             save_path_image = os.path.join(save_path, subset, classe)
             if not os.path.exists(save_path_image):
                 os.makedirs(save_path_image)
