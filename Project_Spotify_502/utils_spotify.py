@@ -11,6 +11,7 @@ import os
 import ast
 import librosa
 import csv
+import matplotlib
 
 # path_x = '../raw_data/fma_medium'
 # path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -31,6 +32,7 @@ class Data():
     path_x_dl = os.path.join('/',abs_path, 'raw_data/fma_medium')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
+    save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
 
     def __init__(self):
         return None
@@ -194,6 +196,87 @@ class Data_DL(Data):
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
         return mel, sr
+
+    def save_image(self, filename, save_path):
+        '''def scale_minmax(X, min=0.0, max=1.0):
+            X_std = (X - X.min()) / (X.max() - X.min())
+            X_scaled = X_std * (max - min) + min
+            return X_scaled'''
+
+        temp = self.generator_spectogram(filename)
+        if temp != None:    
+            mel, sr  = temp
+            #img = scale_minmax(mel, 0, 255).astype(np.uint8)
+            img = np.flip(img, axis=0) # put low frequencies at the bottom in image
+            img = 255-img # invert. make black==more energy
+            matplotlib.image.imsave(f'{os.path.join(save_path, filename[-10:-4])}.png', img, cmap='gray')
+            return None
+        else:
+            print(f'File: {filename} could not be loaded')
+            return filename[-10:-4]
+    
+    def save_images_dir(self, directory, y_train, y_val, y_test, save_path=None, path_X=None):
+        import warnings
+        warnings.filterwarnings("ignore")
+        if path_X == None:
+            path_X = self.path_x_dl
+        if save_path == None:
+            save_path = self.save_path
+        filenames = self.list_of_files(path_X, directory)
+        for filename in filenames:
+            temp = int(filename[-10:-4])
+            if temp in list(y_train.index):
+                subset = 'train'
+                classe = y_train[temp]
+            if temp in list(y_test.index):
+                subset = 'test'
+                classe = y_test[temp]
+            if temp in list(y_val.index):
+                subset = 'val'
+                classe = y_val[temp]
+            save_path_image = os.path.join(save_path, subset, classe)
+            if not os.path.exists(save_path_image):
+                os.makedirs(save_path_image)
+            img = self.save_image(filename, save_path_image)
+            if img != None:
+                if subset == 'train':
+                    y_train.drop(labels=temp, inplace=True)
+                if subset == 'test':
+                    y_test.drop(labels=temp, inplace=True)
+                if subset == 'val':
+                    y_val.drop(labels=temp, inplace=True)
+        
+        return None
+
+
+    def save_images(self, path_y=None, path_X=None, save_path=None):
+        if path_X == None:
+            path_X = self.path_x_dl
+        if path_y == None:
+            path_y = self.path_y
+        if save_path == None:
+            save_path = self.save_path
+        
+        y_train, y_val, y_test = self.generate_y(path_y)
+        print(f'++++Successfully generated y++++')
+        
+        i=0
+        directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
+        for directory in directories:
+            print(i)
+            print(f'++++Starting generation of spectrograms for {directory}++++')
+            self.save_images_dir(directory, y_train, y_val, y_test)
+            print(f'++++Successfully generated spectrograms for {directory}++++')
+            i=i+1
+        y_train.to_csv(os.path.join(save_path, f'y_train.csv'))
+        y_val.to_csv(os.path.join(save_path, f'y_val.csv'))
+        y_test.to_csv(os.path.join(save_path, f'y_test.csv'))
+        return None
+
+
+
+
+
 
     def generate_X(self, directory, path = None):
         if path == None:
