@@ -272,6 +272,7 @@ class Data_DL(Data):
         return None
     
     def save_X_y(self, save_path, path_X = None, path_y = None):
+        i=1
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
@@ -281,8 +282,11 @@ class Data_DL(Data):
             save_directory = os.path.join(save_path, directory)
             if not os.path.exists(save_directory):
                 os.makedirs(save_directory)
-            print(directory)
-            print(f'++++Starting generation of spectrograms for {directory}++++')
-            self.save_X_y_dir(directory, save_path, path_X, path_y)
-            print(f'++++Successfully generated spectrograms for {directory}++++')
+                print(i)
+                print(f'++++Starting generation of spectrograms for {directory}++++')
+                self.save_X_y_dir(directory, save_path, path_X, path_y)
+                print(f'++++Successfully generated spectrograms for {directory}++++')
+                i=i+1
+            else:
+                print(f'Already loaded directory {directory}')
         return None
