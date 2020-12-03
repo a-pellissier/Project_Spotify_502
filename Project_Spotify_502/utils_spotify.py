@@ -7,7 +7,7 @@ import ctypes
 import shutil
 import multiprocessing
 import multiprocessing.sharedctypes as sharedctypes
-import os.path
+import os
 import ast
 import librosa
 import csv
@@ -183,33 +183,44 @@ class Data_DL(Data):
     def __init__(self):
         return None
 
-    def list_of_files(self, path):
-        return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
+    def list_of_files(self, path, directory):
+        return [os.path.join(path, directory, file) for file in os.listdir(os.path.join(path, directory))]
 
     def generator_spectogram(self, filename):
-        x, sr = librosa.load(filename, sr=44100, duration = 29.976598639455784, mono=True)
+        try:
+            x, sr = librosa.load(filename, sr=44100, duration = 29.976598639455784, mono=True)
+        except:
+            return None
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
         return mel, sr
 
-    def generate_X(self, path = None):
+    def generate_X(self, directory, path = None):
         if path == None:
             path = self.path_x_dl
-        filenames = self.list_of_files(path)
+        filenames = self.list_of_files(path, directory)
         spectrograms = []
+        file_prob = []
         for filename in filenames:
-            mel, sr  = self.generator_spectogram(filename)
-            spectrograms.append(mel)
+            temp = self.generator_spectogram(filename)
+            if temp != None:    
+                mel, sr  = temp
+                spectrograms.append(mel)
+            else:
+                file_prob.append(filename)
+                print(f'File: {filename} could not be loaded')
+        for filename in file_prob:
+            filenames.remove(filename)
         filenames = [int(filename[-10:-4].lstrip('0')) for filename in filenames]
         filenames = {track_id : index for index, track_id in enumerate(filenames)}
         return np.array(spectrograms), filenames
 
-    def generate_X_y_subsets(self, path_X = None, path_y = None):
+    def generate_X_y_subsets(self, directory, path_X = None, path_y = None):
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
-        X, filenames = self.generate_X(path_X)
+        X, filenames = self.generate_X(directory, path_X)
         y_train, y_val, y_test = self.generate_y(path_y)
         index_train = [value for key, value in filenames.items() if key in list(y_train.index)]
         index_val = [value for key, value in filenames.items() if key in list(y_val.index)]
@@ -235,34 +246,43 @@ class Data_DL(Data):
 
         return (X_train, X_val, X_test), (y_train, y_val, y_test), filenames
 
-    def save_X_y(self, path_X = None, path_y = None):
-
+    def save_X_y_dir(self, directory, save_path, path_X = None, path_y = None):
+        import warnings
+        warnings.filterwarnings("ignore")
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
 
-        X, y, filenames = self.generate_X_y_subsets(path_X, path_y)
+        X, y, filenames = self.generate_X_y_subsets(directory, path_X, path_y)
         X_train, X_val, X_test = X
         y_train, y_val, y_test = y
-        np.save('X_train.npy', X_train)
-        np.save('X_val.npy', X_val)
-        np.save('X_test.npy', X_test)
+        np.save(os.path.join(save_path, directory, f'X_train_{directory}.npy'), X_train)
+        np.save(os.path.join(save_path, directory, f'X_val_{directory}.npy'), X_val)
+        np.save(os.path.join(save_path, directory, f'X_test_{directory}.npy'), X_test)
 
-        y_val.to_csv('y_val.csv')
-        y_train.to_csv('y_train.csv')
-        y_train.to_csv('y_test.csv')
+        y_val.to_csv(os.path.join(save_path, directory, f'y_val_{directory}.csv'))
+        y_train.to_csv(os.path.join(save_path, directory, f'y_train_{directory}.csv'))
+        y_test.to_csv(os.path.join(save_path, directory, f'y_test_{directory}.csv'))
 
-        w = csv.writer(open("filenames.csv", "w"))
+        w = csv.writer(open(os.path.join(save_path, directory, f"filenames_{directory}.csv"), "w"))
 
         for key, val in filenames.items():
             w.writerow([key, val])
-
         return None
-
-
-
-
-
-
-
+    
+    def save_X_y(self, save_path, path_X = None, path_y = None):
+        if path_X == None:
+            path_X = self.path_x_dl
+        if path_y == None:
+            path_y = self.path_y
+        directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
+        for directory in directories:
+            save_directory = os.path.join(save_path, directory)
+            if not os.path.exists(save_directory):
+                os.makedirs(save_directory)
+            print(directory)
+            print(f'++++Starting generation of spectrograms for {directory}++++')
+            self.save_X_y_dir(directory, save_path, path_X, path_y)
+            print(f'++++Successfully generated spectrograms for {directory}++++')
+        return None
