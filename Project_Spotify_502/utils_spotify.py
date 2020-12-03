@@ -288,6 +288,7 @@ class Data_DL(Data):
                 print(f'++++Successfully generated spectrograms for {directory}++++')
                 i=i+1
             else:
+                print(i)
                 print(f'Already loaded directory {directory}')
                 i=i+1
         return None
