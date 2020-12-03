@@ -259,7 +259,7 @@ class Data_DL(Data):
             save_path = self.save_path
         
         y_train, y_val, y_test = self.generate_y(path_y)
-        print(f'++++Successfully generated y | executed from run.py++++')
+        print(f'++++Successfully generated y |++++')
         
         i=0
         directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
