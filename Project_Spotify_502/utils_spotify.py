@@ -289,4 +289,5 @@ class Data_DL(Data):
                 i=i+1
             else:
                 print(f'Already loaded directory {directory}')
+                i=i+1
         return None
