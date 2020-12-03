@@ -11,7 +11,7 @@ import os
 import ast
 import librosa
 import csv
-import matplotlib
+import matplotlib.image
 
 # path_x = '../raw_data/fma_medium'
 # path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -207,9 +207,10 @@ class Data_DL(Data):
         if temp != None:    
             mel, sr  = temp
             #img = scale_minmax(mel, 0, 255).astype(np.uint8)
-            img = np.flip(img, axis=0) # put low frequencies at the bottom in image
+            img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
             img = 255-img # invert. make black==more energy
             matplotlib.image.imsave(f'{os.path.join(save_path, filename[-10:-4])}.png', img, cmap='gray')
+            del temp, mel, img
             return None
         else:
             print(f'File: {filename} could not be loaded')
@@ -245,7 +246,7 @@ class Data_DL(Data):
                     y_test.drop(labels=temp, inplace=True)
                 if subset == 'val':
                     y_val.drop(labels=temp, inplace=True)
-        
+        del subset, classe, filenames, save_path_image
         return None
 
 
@@ -258,7 +259,7 @@ class Data_DL(Data):
             save_path = self.save_path
         
         y_train, y_val, y_test = self.generate_y(path_y)
-        print(f'++++Successfully generated y++++')
+        print(f'++++Successfully generated y | executed from run.py++++')
         
         i=0
         directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
