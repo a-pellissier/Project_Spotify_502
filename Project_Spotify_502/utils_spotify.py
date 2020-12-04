@@ -213,12 +213,14 @@ class Data_DL(Data):
                 #img = scale_minmax(mel, 0, 255).astype(np.uint8)
                 img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
-                image_path = f'{os.path.join(save_path, filename[-10:-4])}.png'
-                matplotlib.image.imsave(image_path, img, cmap='gray')
-                plt.clf()
-                plt.close()
-                del temp, mel, img, sr
-                return None
+                if img.shape == (128,2582):
+                    matplotlib.image.imsave(image_path, img, cmap='gray')
+                    del temp, mel, img, sr
+                    return None
+                else:
+                    print(f'File: {filename} is not the right size')
+                    del temp, mel, img, sr
+                    return filename[-10:-4]
             else:
                 print(f'File: {filename} could not be loaded')
                 del temp
@@ -392,3 +394,4 @@ class Data_DL(Data):
                 print(f'Already loaded directory {directory}')
                 i=i+1
         return None
+
