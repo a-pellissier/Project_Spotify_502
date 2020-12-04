@@ -12,6 +12,8 @@ import ast
 import librosa
 import csv
 import matplotlib.image
+import matplotlib.pyplot as plt
+import time
 
 # path_x = '../raw_data/fma_medium'
 # path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -195,6 +197,7 @@ class Data_DL(Data):
             return None
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
+        del x, stft
         return mel, sr
 
     def save_image(self, filename, save_path):
@@ -202,19 +205,25 @@ class Data_DL(Data):
             X_std = (X - X.min()) / (X.max() - X.min())
             X_scaled = X_std * (max - min) + min
             return X_scaled'''
-
-        temp = self.generator_spectogram(filename)
-        if temp != None:    
-            mel, sr  = temp
-            #img = scale_minmax(mel, 0, 255).astype(np.uint8)
-            img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
-            img = 255-img # invert. make black==more energy
-            matplotlib.image.imsave(f'{os.path.join(save_path, filename[-10:-4])}.png', img, cmap='gray')
-            del temp, mel, img
-            return None
-        else:
-            print(f'File: {filename} could not be loaded')
-            return filename[-10:-4]
+        image_path = f'{os.path.join(save_path, filename[-10:-4])}.png'
+        if not os.path.exists(image_path):
+            temp = self.generator_spectogram(filename)
+            if temp != None:    
+                mel, sr  = temp
+                #img = scale_minmax(mel, 0, 255).astype(np.uint8)
+                img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
+                img = 255-img # invert. make black==more energy
+                image_path = f'{os.path.join(save_path, filename[-10:-4])}.png'
+                matplotlib.image.imsave(image_path, img, cmap='gray')
+                plt.clf()
+                plt.close()
+                del temp, mel, img, sr
+                return None
+            else:
+                print(f'File: {filename} could not be loaded')
+                del temp
+                return filename[-10:-4]
+        return None
     
     def save_images_dir(self, directory, y_train, y_val, y_test, save_path=None, path_X=None):
         import warnings
@@ -223,9 +232,11 @@ class Data_DL(Data):
             path_X = self.path_x_dl
         if save_path == None:
             save_path = self.save_path
+
         filenames = self.list_of_files(path_X, directory)
         for filename in filenames:
             temp = int(filename[-10:-4])
+            subset = None
             if temp in list(y_train.index):
                 subset = 'train'
                 classe = y_train[temp]
@@ -235,6 +246,8 @@ class Data_DL(Data):
             if temp in list(y_val.index):
                 subset = 'val'
                 classe = y_val[temp]
+            if subset == None:
+                continue 
             save_path_image = os.path.join(save_path, subset, classe)
             if not os.path.exists(save_path_image):
                 os.makedirs(save_path_image)
@@ -259,15 +272,18 @@ class Data_DL(Data):
             save_path = self.save_path
         
         y_train, y_val, y_test = self.generate_y(path_y)
-        print(f'++++Successfully generated y |++++')
+        print(f'++++Successfully generated y | updated with ()++++')
         
         i=0
         directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
         for directory in directories:
             print(i)
+            start = time.time()
             print(f'++++Starting generation of spectrograms for {directory}++++')
             self.save_images_dir(directory, y_train, y_val, y_test)
-            print(f'++++Successfully generated spectrograms for {directory}++++')
+            stop = time.time()
+            duration = stop - start
+            print(f'++++{duration} | Successfully generated spectrograms for {directory}++++')
             i=i+1
         y_train.to_csv(os.path.join(save_path, f'y_train.csv'))
         y_val.to_csv(os.path.join(save_path, f'y_val.csv'))
