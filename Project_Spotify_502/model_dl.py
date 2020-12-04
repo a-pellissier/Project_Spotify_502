@@ -1,18 +1,20 @@
 import matplotlib.pyplot as plt
-%matplotlib inline
-
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.backend import expand_dims
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 
+from PIL import ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 def generator(directory_train, directory_val): 
     generator = ImageDataGenerator()
     train = generator.flow_from_directory(directory = directory_train, \
-                                        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 8)
+                                        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 32)
 
     val = generator.flow_from_directory(directory = directory_val, \
-                                        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 8)
+                                        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 32)
     return train, val
 
 def initiate_model(): 
@@ -38,4 +40,4 @@ def initiate_model():
 if __name__ == '__main__': 
     model = initiate_model()
     train, val = generator('../raw_data/generated_spectrograms/train/', '../raw_data/generated_spectrograms/val/')
-    model.fit_generator(train, epochs=10, validation_data = val)
+    model.fit(train, epochs=1, validation_data = val)
