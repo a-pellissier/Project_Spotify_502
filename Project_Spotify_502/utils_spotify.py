@@ -195,6 +195,7 @@ class Data_DL(Data):
             return None
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
+        del x, stft
         return mel, sr
 
     def save_image(self, filename, save_path):
@@ -214,6 +215,7 @@ class Data_DL(Data):
             return None
         else:
             print(f'File: {filename} could not be loaded')
+            del temp
             return filename[-10:-4]
     
     def save_images_dir(self, directory, y_train, y_val, y_test, save_path=None, path_X=None):
