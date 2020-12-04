@@ -7,10 +7,11 @@ import ctypes
 import shutil
 import multiprocessing
 import multiprocessing.sharedctypes as sharedctypes
-import os.path
+import os
 import ast
 import librosa
 import csv
+import matplotlib.image
 
 # path_x = '../raw_data/fma_medium'
 # path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -31,6 +32,7 @@ class Data():
     path_x_dl = os.path.join('/',abs_path, 'raw_data/fma_medium')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
+    save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
 
     def __init__(self):
         return None
@@ -183,33 +185,126 @@ class Data_DL(Data):
     def __init__(self):
         return None
 
-    def list_of_files(self, path):
-        return [os.path.join(path, directory, file) for directory in os.listdir(path) for file in os.listdir(os.path.join(path, directory))]
+    def list_of_files(self, path, directory):
+        return [os.path.join(path, directory, file) for file in os.listdir(os.path.join(path, directory))]
 
     def generator_spectogram(self, filename):
-        x, sr = librosa.load(filename, sr=44100, duration = 29.976598639455784, mono=True)
+        try:
+            x, sr = librosa.load(filename, sr=44100, duration = 29.976598639455784, mono=True)
+        except:
+            return None
         stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
         mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
         return mel, sr
 
-    def generate_X(self, path = None):
-        if path == None:
-            path = self.path_x_dl
-        filenames = self.list_of_files(path)
-        spectrograms = []
-        for filename in filenames:
-            mel, sr  = self.generator_spectogram(filename)
-            spectrograms.append(mel)
-        filenames = [int(filename[-10:-4].lstrip('0')) for filename in filenames]
-        filenames = {track_id : index for index, track_id in enumerate(filenames)}
-        return np.array(spectrograms), filenames
+    def save_image(self, filename, save_path):
+        '''def scale_minmax(X, min=0.0, max=1.0):
+            X_std = (X - X.min()) / (X.max() - X.min())
+            X_scaled = X_std * (max - min) + min
+            return X_scaled'''
 
-    def generate_X_y_subsets(self, path_X = None, path_y = None):
+        temp = self.generator_spectogram(filename)
+        if temp != None:    
+            mel, sr  = temp
+            #img = scale_minmax(mel, 0, 255).astype(np.uint8)
+            img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
+            img = 255-img # invert. make black==more energy
+            matplotlib.image.imsave(f'{os.path.join(save_path, filename[-10:-4])}.png', img, cmap='gray')
+            del temp, mel, img
+            return None
+        else:
+            print(f'File: {filename} could not be loaded')
+            return filename[-10:-4]
+    
+    def save_images_dir(self, directory, y_train, y_val, y_test, save_path=None, path_X=None):
+        import warnings
+        warnings.filterwarnings("ignore")
+        if path_X == None:
+            path_X = self.path_x_dl
+        if save_path == None:
+            save_path = self.save_path
+        filenames = self.list_of_files(path_X, directory)
+        for filename in filenames:
+            temp = int(filename[-10:-4])
+            if temp in list(y_train.index):
+                subset = 'train'
+                classe = y_train[temp]
+            if temp in list(y_test.index):
+                subset = 'test'
+                classe = y_test[temp]
+            if temp in list(y_val.index):
+                subset = 'val'
+                classe = y_val[temp]
+            save_path_image = os.path.join(save_path, subset, classe)
+            if not os.path.exists(save_path_image):
+                os.makedirs(save_path_image)
+            img = self.save_image(filename, save_path_image)
+            if img != None:
+                if subset == 'train':
+                    y_train.drop(labels=temp, inplace=True)
+                if subset == 'test':
+                    y_test.drop(labels=temp, inplace=True)
+                if subset == 'val':
+                    y_val.drop(labels=temp, inplace=True)
+        del subset, classe, filenames, save_path_image
+        return None
+
+
+    def save_images(self, path_y=None, path_X=None, save_path=None):
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
-        X, filenames = self.generate_X(path_X)
+        if save_path == None:
+            save_path = self.save_path
+        
+        y_train, y_val, y_test = self.generate_y(path_y)
+        print(f'++++Successfully generated y |++++')
+        
+        i=0
+        directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
+        for directory in directories:
+            print(i)
+            print(f'++++Starting generation of spectrograms for {directory}++++')
+            self.save_images_dir(directory, y_train, y_val, y_test)
+            print(f'++++Successfully generated spectrograms for {directory}++++')
+            i=i+1
+        y_train.to_csv(os.path.join(save_path, f'y_train.csv'))
+        y_val.to_csv(os.path.join(save_path, f'y_val.csv'))
+        y_test.to_csv(os.path.join(save_path, f'y_test.csv'))
+        return None
+
+
+
+
+
+
+    def generate_X(self, directory, path = None):
+        if path == None:
+            path = self.path_x_dl
+        filenames = self.list_of_files(path, directory)
+        spectrograms = []
+        file_prob = []
+        for filename in filenames:
+            temp = self.generator_spectogram(filename)
+            if temp != None:    
+                mel, sr  = temp
+                spectrograms.append(mel)
+            else:
+                file_prob.append(filename)
+                print(f'File: {filename} could not be loaded')
+        for filename in file_prob:
+            filenames.remove(filename)
+        filenames = [int(filename[-10:-4].lstrip('0')) for filename in filenames]
+        filenames = {track_id : index for index, track_id in enumerate(filenames)}
+        return np.array(spectrograms), filenames
+
+    def generate_X_y_subsets(self, directory, path_X = None, path_y = None):
+        if path_X == None:
+            path_X = self.path_x_dl
+        if path_y == None:
+            path_y = self.path_y
+        X, filenames = self.generate_X(directory, path_X)
         y_train, y_val, y_test = self.generate_y(path_y)
         index_train = [value for key, value in filenames.items() if key in list(y_train.index)]
         index_val = [value for key, value in filenames.items() if key in list(y_val.index)]
@@ -235,34 +330,49 @@ class Data_DL(Data):
 
         return (X_train, X_val, X_test), (y_train, y_val, y_test), filenames
 
-    def save_X_y(self, path_X = None, path_y = None):
-
+    def save_X_y_dir(self, directory, save_path, path_X = None, path_y = None):
+        import warnings
+        warnings.filterwarnings("ignore")
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
 
-        X, y, filenames = self.generate_X_y_subsets(path_X, path_y)
+        X, y, filenames = self.generate_X_y_subsets(directory, path_X, path_y)
         X_train, X_val, X_test = X
         y_train, y_val, y_test = y
-        np.save('X_train.npy', X_train)
-        np.save('X_val.npy', X_val)
-        np.save('X_test.npy', X_test)
+        np.save(os.path.join(save_path, directory, f'X_train_{directory}.npy'), X_train)
+        np.save(os.path.join(save_path, directory, f'X_val_{directory}.npy'), X_val)
+        np.save(os.path.join(save_path, directory, f'X_test_{directory}.npy'), X_test)
 
-        y_val.to_csv('y_val.csv')
-        y_train.to_csv('y_train.csv')
-        y_train.to_csv('y_test.csv')
+        y_val.to_csv(os.path.join(save_path, directory, f'y_val_{directory}.csv'))
+        y_train.to_csv(os.path.join(save_path, directory, f'y_train_{directory}.csv'))
+        y_test.to_csv(os.path.join(save_path, directory, f'y_test_{directory}.csv'))
 
-        w = csv.writer(open("filenames.csv", "w"))
+        w = csv.writer(open(os.path.join(save_path, directory, f"filenames_{directory}.csv"), "w"))
 
         for key, val in filenames.items():
             w.writerow([key, val])
-
         return None
-
-
-
-
-
-
-
+    
+    def save_X_y(self, save_path, path_X = None, path_y = None):
+        i=1
+        if path_X == None:
+            path_X = self.path_x_dl
+        if path_y == None:
+            path_y = self.path_y
+        directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
+        for directory in directories:
+            save_directory = os.path.join(save_path, directory)
+            if not os.path.exists(save_directory):
+                os.makedirs(save_directory)
+                print(i)
+                print(f'++++Starting generation of spectrograms for {directory}++++')
+                self.save_X_y_dir(directory, save_path, path_X, path_y)
+                print(f'++++Successfully generated spectrograms for {directory}++++')
+                i=i+1
+            else:
+                print(i)
+                print(f'Already loaded directory {directory}')
+                i=i+1
+        return None
