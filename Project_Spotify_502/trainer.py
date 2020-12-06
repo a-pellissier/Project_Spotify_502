@@ -63,6 +63,8 @@ class Trainer():
         print(classification_report(y_test, self.pipeline.predict(X_test)))
 
 
+
+
 class Prepoccess():
 
     def __init__(self):
@@ -71,20 +73,17 @@ class Prepoccess():
     def feature_selec(self, C = 0.002):
         # Using linear SVC as feature selection
         lsvc = LinearSVC(C = C, penalty="l1", dual=False, max_iter = 500)
-        selection_model = SelectFromModel(lsvc, prefit = False)
+        selec_from_model = SelectFromModel(lsvc, prefit = False)
 
-        return selection_model
-
-
+        return selec_from_model
 
 
 
 
 class Models():
 
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
+    def __init__(self):
+        return None
 
     def model_SVM(self, ker = 'rbf', C = 2.11111, gamma = 0.00833):
         svm = SVC(kernel = ker, C = C, gamma = gamma)
@@ -92,8 +91,9 @@ class Models():
         return svm
 
 
-    def model_tree(self, max_depth = 8, min_samples_leaf: 0.001, min_samples_split : 0.003):
-        cl_tree = DecisionTreeClassifier(max_depth = max_depth, min_samples_leaf = min_samples_leaf, min_samples_split = min_samples_split)
+    def model_tree(self, max_dep = 8, min_samp_lf = 0.001, min_samp_splt = 0.003):
+
+        cl_tree = DecisionTreeClassifier(max_depth = max_dep, min_samples_leaf = min_samp_lf, min_samples_split = min_samples_splt)
 
         return cl_tree
 
@@ -104,13 +104,13 @@ class Models():
         return cl_forest
 
 
-    def model_xgb(self)
+    def model_xgb(self):
         params = {}
-        params['learning_rate'] = 0.2          # 0.01 - 0.2
-        params['n_estimators'] = 165
-        params['subsample'] = 0.65              # Fraction of observations to be use
-        params['colsample_bytree'] = 0.75       # Fraction of features to be use
-        params['max_depth'] = 5                # 5/15
+        params['learning_rate'] = 0.1          # 0.01 - 0.2
+        params['n_estimators'] = 180
+        params['subsample'] = 0.8              # Fraction of observations to be use
+        params['colsample_bytree'] = 0.8       # Fraction of features to be use
+        params['max_depth'] = 10              # 5/15
 
         xgb_cl = XGBClassifier(objective = 'multi:softmax', **params)
 
