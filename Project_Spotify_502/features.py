@@ -237,7 +237,7 @@ def compute_features_from_filepath(name, filepath):
 
 def compute_features_from_url(song_url):
 
-    tid = f"{song_url[0]}_test"
+    tid = song_url[0]
     features = pd.Series(index=columns(), dtype=np.float32, name=tid)
 
     processed=0
@@ -448,6 +448,6 @@ if __name__ == "__main__":
     for k in range(0,10):
         offset = 0+50*k
         main_own_collection(nb_of_tracks=50,offset=offset)
-        list_of_df.append(pd.read_csv(f'../raw_data/features_{x}.csv', index_col=0, header = [0,1,2]))
+        list_of_df.append(pd.read_csv(f'features_{offset}.csv', index_col=0, header = [0,1,2]))
     features_test = pd.concat([df for df in list_of_df]).dropna()
     features_test.to_csv('../raw_data/features_test.csv')
