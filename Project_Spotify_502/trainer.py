@@ -22,11 +22,11 @@ class Trainer():
         self.y = y
 
 
-    def set_pipeline(self, C_param = 0.002):
+    def set_pipeline(self):
         """defines the pipeline as a class attribute"""
 
         # dimension reduction & scaling
-        lsvc = LinearSVC(C = C_param, penalty="l1", dual=False, max_iter = 500)
+        lsvc = LinearSVC(C = 0.002, penalty="l1", dual=False, max_iter = 500)
 
         preprocc_pipe = Pipeline([
                             ('Scaler', StandardScaler()),
@@ -36,15 +36,15 @@ class Trainer():
         # Add model
         model_pipe = Pipeline([
                         ('preprocessing', preprocc_pipe),
-                        ('SVM', SVC())
+                        ('model_SVM', SVC(kernel = 'rbf', C = 2.11111, gamma = 0.00833))
                     ])
 
         return model_pipe
 
 
-    def run(self, C_param = 0.002):
+    def run(self):
         """set and train the pipeline"""
-        self.pipeline = self.set_pipeline(C_param)
+        self.pipeline = self.set_pipeline()
         self.pipeline.fit(self.X, self.y)
 
 
@@ -58,3 +58,12 @@ class Trainer():
         """return the classification report"""
 
         print(classification_report(y_test, self.pipeline.predict(X_test)))
+
+
+
+
+
+class Model():
+
+    def __init__(self):
+        return None
