@@ -410,10 +410,10 @@ class DataSpotify():
 
 
     def get_clean_genre(self, path):
-        """
+
         import warnings
         warnings.filterwarnings("ignore")
-        """
+
         features = pd.read_csv(os.path.join(path, 'features.csv'), header = [0, 1, 2])
         target = pd.read_csv(os.path.join(path, 'metadata.csv'))
         #drop NA + new index
@@ -455,6 +455,7 @@ class DataSpotify():
     def generate_spot_data(self):
 
         if os.listdir(self.cleandata_path) != []:
+            print('Please empty spotify_dataset folder before runing')
             return 'Please empty spotify_dataset folder before runing'
 
         data, n_obs = self.get_spotify_data()
@@ -481,7 +482,9 @@ class DataSpotify():
 
         return
 
-
+    def get_train_set(self):
+        path = os.path.join(self.cleandata_path, 'train','train_set.csv')
+        return pd.read_csv(path)
 
 
 
