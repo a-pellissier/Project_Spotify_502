@@ -203,22 +203,23 @@ class Data_DL(Data):
         return mel, sr
 
     def save_image(self, filename, save_path, format_):
-        '''def scale_minmax(X, min=0.0, max=1.0):
+        def scale_minmax(X, min=0.0, max=1.0):
             X_std = (X - X.min()) / (X.max() - X.min())
             X_scaled = X_std * (max - min) + min
-            return X_scaled'''
+            return X_scaled
         image_path = f'{os.path.join(save_path, filename[-10:-4])}.{format_}'
         if not os.path.exists(f'{image_path}.{format_}'):
             temp = self.generator_spectogram(filename)
             if temp != None:    
                 mel, sr  = temp
-                #img = scale_minmax(mel, 0, 255).astype(np.uint8)
+                img = scale_minmax(mel, 0, 255).astype(np.uint8)
                 img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
                     if format_ == 'png':
                         matplotlib.image.imsave(f'{image_path}', img, cmap='gray')
                     if format_ == 'npy':
+                        img = img
                         np.save(f'{image_path}', img)
                     del temp, mel, img, sr
                     return None
