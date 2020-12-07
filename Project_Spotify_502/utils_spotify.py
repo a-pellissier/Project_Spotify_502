@@ -213,7 +213,7 @@ class Data_DL(Data):
             if temp != None:    
                 mel, sr  = temp
                 img = scale_minmax(mel, 0, 255).astype(np.uint8)
-                img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
+                img = np.flip(img, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
                     if format_ == 'png':
@@ -271,14 +271,14 @@ class Data_DL(Data):
         return None
 
 
-    def save_images(self, path_y=None, path_X=None, format_='png', save_path=None):
+    def save_images(self, path_y=None, path_X=None, format_='png', save_path=None, size = 'medium'):
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
         if save_path == None:
             save_path = self.save_path
-        y_train, y_val, y_test = self.generate_y(path_y)
+        y_train, y_val, y_test = self.generate_y(path_y, size = size)
         print(f'++++Successfully generated y | updated with good npy++++')
         
         i=0
@@ -296,9 +296,6 @@ class Data_DL(Data):
         y_val.to_csv(os.path.join(save_path, f'y_val.csv'))
         y_test.to_csv(os.path.join(save_path, f'y_test.csv'))
         return None
-
-
-
 
 
 
