@@ -32,6 +32,7 @@ class Data():
     # getting the csv absolute path
     abs_path = __file__.replace('Project_Spotify_502/utils_spotify.py', '')
     path_x_dl = os.path.join('/',abs_path, 'raw_data/fma_medium')
+    path_x_dl_small = os.path.join('/',abs_path, 'raw_data/fma_small/fma_small')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
     save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
@@ -188,6 +189,7 @@ class Data_DL(Data):
         return None
 
     def list_of_files(self, path, directory):
+        print(path)
         return [os.path.join(path, directory, file) for file in os.listdir(os.path.join(path, directory))]
 
     def generator_spectogram(self, filename):
@@ -201,23 +203,24 @@ class Data_DL(Data):
         return mel, sr
 
     def save_image(self, filename, save_path, format_):
-        '''def scale_minmax(X, min=0.0, max=1.0):
+        def scale_minmax(X, min=0.0, max=1.0):
             X_std = (X - X.min()) / (X.max() - X.min())
             X_scaled = X_std * (max - min) + min
-            return X_scaled'''
+            return X_scaled
         image_path = f'{os.path.join(save_path, filename[-10:-4])}.{format_}'
         if not os.path.exists(f'{image_path}.{format_}'):
             temp = self.generator_spectogram(filename)
             if temp != None:    
                 mel, sr  = temp
-                #img = scale_minmax(mel, 0, 255).astype(np.uint8)
-                img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
+                img = scale_minmax(mel, 0, 255).astype(np.uint8)
+                img = np.flip(img, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
                     if format_ == 'png':
-                        matplotlib.image.imsave(f'{image_path}.png', img, cmap='gray')
+                        matplotlib.image.imsave(f'{image_path}', img, cmap='gray')
                     if format_ == 'npy':
-                        np.save(f'{image_path}.npy', img)
+                        img = img
+                        np.save(f'{image_path}', img)
                     del temp, mel, img, sr
                     return None
                 else:
@@ -268,15 +271,14 @@ class Data_DL(Data):
         return None
 
 
-    def save_images(self, path_y=None, path_X=None, format_='png', save_path=None):
+    def save_images(self, path_y=None, path_X=None, format_='png', save_path=None, size = 'medium'):
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
         if save_path == None:
             save_path = self.save_path
-        
-        y_train, y_val, y_test = self.generate_y(path_y)
+        y_train, y_val, y_test = self.generate_y(path_y, size = size)
         print(f'++++Successfully generated y | updated with good npy++++')
         
         i=0
@@ -285,7 +287,7 @@ class Data_DL(Data):
             print(i)
             start = time.time()
             print(f'++++Starting generation of spectrograms for {directory}++++')
-            self.save_images_dir(directory, y_train, y_val, y_test, format_)
+            self.save_images_dir(directory, y_train, y_val, y_test, format_ = format_, path_X = path_X)
             stop = time.time()
             duration = stop - start
             print(f'++++{duration} | Successfully generated spectrograms for {directory}++++')
@@ -294,9 +296,6 @@ class Data_DL(Data):
         y_val.to_csv(os.path.join(save_path, f'y_val.csv'))
         y_test.to_csv(os.path.join(save_path, f'y_test.csv'))
         return None
-
-
-
 
 
 
