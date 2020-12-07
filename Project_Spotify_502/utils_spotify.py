@@ -32,6 +32,7 @@ class Data():
     # getting the csv absolute path
     abs_path = __file__.replace('Project_Spotify_502/utils_spotify.py', '')
     path_x_dl = os.path.join('/',abs_path, 'raw_data/fma_medium')
+    path_x_dl_small = os.path.join('/',abs_path, 'raw_data/fma_small/fma_small')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
     save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
@@ -188,6 +189,7 @@ class Data_DL(Data):
         return None
 
     def list_of_files(self, path, directory):
+        print(path)
         return [os.path.join(path, directory, file) for file in os.listdir(os.path.join(path, directory))]
 
     def generator_spectogram(self, filename):
@@ -200,21 +202,25 @@ class Data_DL(Data):
         del x, stft
         return mel, sr
 
-    def save_image(self, filename, save_path):
-        '''def scale_minmax(X, min=0.0, max=1.0):
+    def save_image(self, filename, save_path, format_):
+        def scale_minmax(X, min=0.0, max=1.0):
             X_std = (X - X.min()) / (X.max() - X.min())
             X_scaled = X_std * (max - min) + min
-            return X_scaled'''
-        image_path = f'{os.path.join(save_path, filename[-10:-4])}.png'
-        if not os.path.exists(image_path):
+            return X_scaled
+        image_path = f'{os.path.join(save_path, filename[-10:-4])}.{format_}'
+        if not os.path.exists(f'{image_path}.{format_}'):
             temp = self.generator_spectogram(filename)
-            if temp != None:    
+            if temp != None:
                 mel, sr  = temp
-                #img = scale_minmax(mel, 0, 255).astype(np.uint8)
-                img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
+                img = scale_minmax(mel, 0, 255).astype(np.uint8)
+                img = np.flip(img, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
-                    matplotlib.image.imsave(image_path, img, cmap='gray')
+                    if format_ == 'png':
+                        matplotlib.image.imsave(f'{image_path}', img, cmap='gray')
+                    if format_ == 'npy':
+                        img = img
+                        np.save(f'{image_path}', img)
                     del temp, mel, img, sr
                     return None
                 else:
@@ -226,8 +232,8 @@ class Data_DL(Data):
                 del temp
                 return filename[-10:-4]
         return None
-    
-    def save_images_dir(self, directory, y_train, y_val, y_test, save_path=None, path_X=None):
+
+    def save_images_dir(self, directory, y_train, y_val, y_test, format_='png', save_path=None, path_X=None):
         import warnings
         warnings.filterwarnings("ignore")
         if path_X == None:
@@ -249,11 +255,11 @@ class Data_DL(Data):
                 subset = 'val'
                 classe = y_val[temp]
             if subset == None:
-                continue 
-            save_path_image = os.path.join(save_path, subset, classe)
+                continue
+            save_path_image = os.path.join(save_path, format_, subset, classe)
             if not os.path.exists(save_path_image):
                 os.makedirs(save_path_image)
-            img = self.save_image(filename, save_path_image)
+            img = self.save_image(filename, save_path_image, format_)
             if img != None:
                 if subset == 'train':
                     y_train.drop(labels=temp, inplace=True)
@@ -265,24 +271,23 @@ class Data_DL(Data):
         return None
 
 
-    def save_images(self, path_y=None, path_X=None, save_path=None):
+    def save_images(self, path_y=None, path_X=None, format_='png', save_path=None, size = 'medium'):
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
             path_y = self.path_y
         if save_path == None:
             save_path = self.save_path
-        
-        y_train, y_val, y_test = self.generate_y(path_y)
-        print(f'++++Successfully generated y | updated with ()++++')
-        
+        y_train, y_val, y_test = self.generate_y(path_y, size = size)
+        print(f'++++Successfully generated y | updated with good npy++++')
+
         i=0
         directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
         for directory in directories:
             print(i)
             start = time.time()
             print(f'++++Starting generation of spectrograms for {directory}++++')
-            self.save_images_dir(directory, y_train, y_val, y_test)
+            self.save_images_dir(directory, y_train, y_val, y_test, format_ = format_, path_X = path_X)
             stop = time.time()
             duration = stop - start
             print(f'++++{duration} | Successfully generated spectrograms for {directory}++++')
@@ -294,9 +299,6 @@ class Data_DL(Data):
 
 
 
-
-
-
     def generate_X(self, directory, path = None):
         if path == None:
             path = self.path_x_dl
@@ -305,7 +307,7 @@ class Data_DL(Data):
         file_prob = []
         for filename in filenames:
             temp = self.generator_spectogram(filename)
-            if temp != None:    
+            if temp != None:
                 mel, sr  = temp
                 spectrograms.append(mel)
             else:
@@ -372,7 +374,7 @@ class Data_DL(Data):
         for key, val in filenames.items():
             w.writerow([key, val])
         return None
-    
+
     def save_X_y(self, save_path, path_X = None, path_y = None):
         i=1
         if path_X == None:
@@ -394,4 +396,109 @@ class Data_DL(Data):
                 print(f'Already loaded directory {directory}')
                 i=i+1
         return None
+
+
+class DataSpotify():
+
+    abs_path = __file__.replace('Project_Spotify_502/utils_spotify.py', '')
+    rawdata_path = os.path.join(abs_path, 'raw_data', 'spotify_rawdata')
+    cleandata_path = os.path.join(abs_path, 'raw_data', 'spotify_dataset')
+
+    def __init__(self):
+        return None
+
+
+
+    def get_clean_genre(self, path):
+
+        import warnings
+        warnings.filterwarnings("ignore")
+
+        features = pd.read_csv(os.path.join(path, 'features.csv'), header = [0, 1, 2])
+        target = pd.read_csv(os.path.join(path, 'metadata.csv'))
+        #drop NA + new index
+        features = features.dropna().set_index(('feature', 'statistics', 'number')).rename_axis('tid')
+
+        target = target.set_index('Unnamed: 0')[['playlist_genre']]
+        target = target.rename_axis('tid').rename(columns = {'playlist_genre':'main_genre'})
+
+        data = features.merge(target, how = 'inner', on = 'tid').reset_index(drop=True)
+
+        X = data.drop(columns = ['main_genre'])
+        y = data.main_genre
+
+        return X, y
+
+
+
+    def get_spotify_data(self):
+        genres = [direct for direct in os.listdir(self.rawdata_path)]
+
+        dic_data = {}
+        min_sample = float('inf')
+
+
+        for genre in genres:
+            # get dict of dataset / genre
+            path = os.path.join(self.rawdata_path, genre)
+            X, y = self.get_clean_genre(path)
+            data = pd.concat([X, y], axis = 1)
+
+            dic_data[genre] = data
+
+            min_sample = min(data.shape[0], min_sample)
+
+
+        return dic_data, min_sample
+
+
+    def generate_spot_data(self):
+
+        if os.listdir(self.cleandata_path) != []:
+            print('Please empty spotify_dataset folder before runing')
+            return 'Please empty spotify_dataset folder before runing'
+
+        data, n_obs = self.get_spotify_data()
+        genres = list(data.keys())
+
+        train_set = pd.DataFrame(columns = data[genres[0]].columns)
+        full_set = pd.DataFrame(columns = data[genres[0]].columns)
+
+        for genre in genres:
+            extract = data[genre].sample(n = n_obs)
+
+            train_set = pd.concat([train_set, extract])
+            full_set = pd.concat([full_set, data[genre]])
+
+        # Save train set
+        os.makedirs(os.path.join(self.cleandata_path, 'train'))
+        train_set.to_csv(os.path.join(self.cleandata_path, 'train', 'train_set.csv'), index = False)
+        print('train_set saved')
+
+        # Save full set
+        os.makedirs(os.path.join(self.cleandata_path, 'full'))
+        full_set.to_csv(os.path.join(self.cleandata_path, 'full', 'full_set.csv'), index = False)
+        print('full set saved')
+
+        return
+
+    def get_train_set(self):
+        path = os.path.join(self.cleandata_path, 'train','train_set.csv')
+        return pd.read_csv(path)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

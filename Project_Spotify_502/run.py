@@ -17,4 +17,6 @@ from Project_Spotify_502 import utils_spotify as u
 
 if __name__ == "__main__":
     print ('entering run')
-    u.Data_DL().save_images()
+    dl_data = u.Data_DL()
+    dl_data.save_images(path_X = dl_data.path_x_dl, format_ = 'png', size = 'small')
+    dl_data.save_images(path_X = dl_data.path_x_dl, format_ = 'npy', size = 'small')
