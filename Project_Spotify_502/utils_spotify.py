@@ -205,8 +205,8 @@ class Data_DL(Data):
             X_std = (X - X.min()) / (X.max() - X.min())
             X_scaled = X_std * (max - min) + min
             return X_scaled'''
-        image_path = f'{os.path.join(save_path, filename[-10:-4])}.png'
-        if not os.path.exists(image_path):
+        image_path = f'{os.path.join(save_path, filename[-10:-4])}'
+        if not os.path.exists(f'{image_path}.png') or not os.path.exists(f'{image_path}.pny'):
             temp = self.generator_spectogram(filename)
             if temp != None:    
                 mel, sr  = temp
@@ -214,7 +214,10 @@ class Data_DL(Data):
                 img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
-                    matplotlib.image.imsave(image_path, img, cmap='gray')
+                    if not os.path.exists(f'{image_path}.png'):
+                        matplotlib.image.imsave(f'{image_path}.png', img, cmap='gray')
+                    if not os.path.exists(f'{image_path}.npy'):
+                        np.save(f'{image_path}.npy', img)
                     del temp, mel, img, sr
                     return None
                 else:
@@ -274,7 +277,7 @@ class Data_DL(Data):
             save_path = self.save_path
         
         y_train, y_val, y_test = self.generate_y(path_y)
-        print(f'++++Successfully generated y | updated with ()++++')
+        print(f'++++Successfully generated y | updated with npy++++')
         
         i=0
         directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
