@@ -32,6 +32,7 @@ class Data():
     # getting the csv absolute path
     abs_path = __file__.replace('Project_Spotify_502/utils_spotify.py', '')
     path_x_dl = os.path.join('/',abs_path, 'raw_data/fma_medium')
+    path_x_dl_small = os.path.join('/',abs_path, 'raw_data/fma_small/fma_small')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
     save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
@@ -188,6 +189,7 @@ class Data_DL(Data):
         return None
 
     def list_of_files(self, path, directory):
+        print(path)
         return [os.path.join(path, directory, file) for file in os.listdir(os.path.join(path, directory))]
 
     def generator_spectogram(self, filename):
@@ -215,9 +217,9 @@ class Data_DL(Data):
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
                     if format_ == 'png':
-                        matplotlib.image.imsave(f'{image_path}.png', img, cmap='gray')
+                        matplotlib.image.imsave(f'{image_path}', img, cmap='gray')
                     if format_ == 'npy':
-                        np.save(f'{image_path}.npy', img)
+                        np.save(f'{image_path}', img)
                     del temp, mel, img, sr
                     return None
                 else:
@@ -275,7 +277,6 @@ class Data_DL(Data):
             path_y = self.path_y
         if save_path == None:
             save_path = self.save_path
-        
         y_train, y_val, y_test = self.generate_y(path_y)
         print(f'++++Successfully generated y | updated with good npy++++')
         
@@ -285,7 +286,7 @@ class Data_DL(Data):
             print(i)
             start = time.time()
             print(f'++++Starting generation of spectrograms for {directory}++++')
-            self.save_images_dir(directory, y_train, y_val, y_test, format_)
+            self.save_images_dir(directory, y_train, y_val, y_test, format_ = format_, path_X = path_X)
             stop = time.time()
             duration = stop - start
             print(f'++++{duration} | Successfully generated spectrograms for {directory}++++')
