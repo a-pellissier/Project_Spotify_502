@@ -200,13 +200,13 @@ class Data_DL(Data):
         del x, stft
         return mel, sr
 
-    def save_image(self, filename, save_path):
+    def save_image(self, filename, save_path, format_):
         '''def scale_minmax(X, min=0.0, max=1.0):
             X_std = (X - X.min()) / (X.max() - X.min())
             X_scaled = X_std * (max - min) + min
             return X_scaled'''
-        image_path = f'{os.path.join(save_path, filename[-10:-4])}'
-        if not os.path.exists(f'{image_path}.png') or not os.path.exists(f'{image_path}.pny'):
+        image_path = f'{os.path.join(save_path, filename[-10:-4])}.{format_}'
+        if not os.path.exists(f'{image_path}.{format_}'):
             temp = self.generator_spectogram(filename)
             if temp != None:    
                 mel, sr  = temp
@@ -214,9 +214,9 @@ class Data_DL(Data):
                 img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
                 img = 255-img # invert. make black==more energy
                 if img.shape == (128,2582):
-                    if not os.path.exists(f'{image_path}.png'):
+                    if format_ == 'png':
                         matplotlib.image.imsave(f'{image_path}.png', img, cmap='gray')
-                    if not os.path.exists(f'{image_path}.npy'):
+                    if format_ == 'npy':
                         np.save(f'{image_path}.npy', img)
                     del temp, mel, img, sr
                     return None
@@ -230,7 +230,7 @@ class Data_DL(Data):
                 return filename[-10:-4]
         return None
     
-    def save_images_dir(self, directory, y_train, y_val, y_test, save_path=None, path_X=None):
+    def save_images_dir(self, directory, y_train, y_val, y_test, format_='png', save_path=None, path_X=None):
         import warnings
         warnings.filterwarnings("ignore")
         if path_X == None:
@@ -253,10 +253,10 @@ class Data_DL(Data):
                 classe = y_val[temp]
             if subset == None:
                 continue 
-            save_path_image = os.path.join(save_path, subset, classe)
+            save_path_image = os.path.join(save_path, format_, subset, classe)
             if not os.path.exists(save_path_image):
                 os.makedirs(save_path_image)
-            img = self.save_image(filename, save_path_image)
+            img = self.save_image(filename, save_path_image, format_)
             if img != None:
                 if subset == 'train':
                     y_train.drop(labels=temp, inplace=True)
@@ -268,7 +268,7 @@ class Data_DL(Data):
         return None
 
 
-    def save_images(self, path_y=None, path_X=None, save_path=None):
+    def save_images(self, path_y=None, path_X=None, format_='png', save_path=None):
         if path_X == None:
             path_X = self.path_x_dl
         if path_y == None:
@@ -277,7 +277,7 @@ class Data_DL(Data):
             save_path = self.save_path
         
         y_train, y_val, y_test = self.generate_y(path_y)
-        print(f'++++Successfully generated y | updated with npy++++')
+        print(f'++++Successfully generated y | updated with good npy++++')
         
         i=0
         directories = [os.path.join(path_X, directory)[-3:] for directory in os.listdir(path_X)]
@@ -285,7 +285,7 @@ class Data_DL(Data):
             print(i)
             start = time.time()
             print(f'++++Starting generation of spectrograms for {directory}++++')
-            self.save_images_dir(directory, y_train, y_val, y_test)
+            self.save_images_dir(directory, y_train, y_val, y_test, format_)
             stop = time.time()
             duration = stop - start
             print(f'++++{duration} | Successfully generated spectrograms for {directory}++++')
