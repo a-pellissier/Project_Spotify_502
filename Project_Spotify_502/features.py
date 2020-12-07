@@ -50,7 +50,7 @@ def compute_features(tid):
 
     processed=0
     error=0
-    error_id=None
+    skip_id=None
 
     # Catch warnings as exceptions (audioread leaks file descriptors).
     warnings.filterwarnings('ignore', module='librosa')
@@ -112,9 +112,9 @@ def compute_features(tid):
     except Exception as e:
         print(f'error = {e}')
         error+=1
-        error_id=tid
+        skip_id=tid
 
-    return features, processed, error, error_id
+    return features, processed, error, skip_id
 
 
 def compute_features_from_mp3(tid):
@@ -240,9 +240,7 @@ def compute_features_from_url(song_url):
     tid = song_url[0]
     features = pd.Series(index=columns(), dtype=np.float32, name=tid)
 
-    processed=0
-    error=0
-    error_id=None
+    processed=1
 
     # Catch warnings as exceptions (audioread leaks file descriptors).
     warnings.filterwarnings('ignore', module='librosa')
@@ -256,70 +254,63 @@ def compute_features_from_url(song_url):
         features[name, 'min'] = np.min(values, axis=1)
         features[name, 'max'] = np.max(values, axis=1)
 
+    # generating temporary mp3 path
+    sample_30s = urlopen(song_url[1])
+    mp3_path = f"temp_{song_url[0]}.mp3"
+    output = open(mp3_path, 'wb')
+    output.write(sample_30s.read())
+
+    #loading with librosa
+    x, sr = librosa.load(mp3_path, sr=None, mono=True)
+
+    #remove temp file (did this because it seemed to not remove it)
     try:
-        # generating temporary mp3 path
-        sample_30s = urlopen(song_url[1])
-        mp3_path = f"temp_{song_url[0]}.mp3"
-        output = open(mp3_path, 'wb')
-        output.write(sample_30s.read())
+        os.remove(mp3_path)
+    except Exception:
+        print("all good bro, temp audio file already wiped")
 
-        #loading with librosa
-        x, sr = librosa.load(mp3_path, sr=None, mono=True)
+    f = librosa.feature.zero_crossing_rate(x, frame_length=2048, hop_length=512)
+    feature_stats('zcr', f)
 
-        #remove temp file (did this because it seemed to not remove it)
-        try:
-            os.remove(mp3_path)
-        except Exception:
-            print("all good bro, temp audio file already wiped")
+    cqt = np.abs(librosa.cqt(x, sr=sr, hop_length=512, bins_per_octave=12,
+                                n_bins=7*12, tuning=None))
+    assert cqt.shape[0] == 7 * 12
+    assert np.ceil(len(x)/512) <= cqt.shape[1] <= np.ceil(len(x)/512)+1
 
-        f = librosa.feature.zero_crossing_rate(x, frame_length=2048, hop_length=512)
-        feature_stats('zcr', f)
+    f = librosa.feature.chroma_cqt(C=cqt, n_chroma=12, n_octaves=7)
+    feature_stats('chroma_cqt', f)
+    f = librosa.feature.chroma_cens(C=cqt, n_chroma=12, n_octaves=7)
+    feature_stats('chroma_cens', f)
+    f = librosa.feature.tonnetz(chroma=f)
+    feature_stats('tonnetz', f)
 
-        cqt = np.abs(librosa.cqt(x, sr=sr, hop_length=512, bins_per_octave=12,
-                                 n_bins=7*12, tuning=None))
-        assert cqt.shape[0] == 7 * 12
-        assert np.ceil(len(x)/512) <= cqt.shape[1] <= np.ceil(len(x)/512)+1
+    del cqt
+    stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
+    assert stft.shape[0] == 1 + 2048 // 2
+    assert np.ceil(len(x)/512) <= stft.shape[1] <= np.ceil(len(x)/512)+1
+    del x
 
-        f = librosa.feature.chroma_cqt(C=cqt, n_chroma=12, n_octaves=7)
-        feature_stats('chroma_cqt', f)
-        f = librosa.feature.chroma_cens(C=cqt, n_chroma=12, n_octaves=7)
-        feature_stats('chroma_cens', f)
-        f = librosa.feature.tonnetz(chroma=f)
-        feature_stats('tonnetz', f)
+    f = librosa.feature.chroma_stft(S=stft**2, n_chroma=12)
+    feature_stats('chroma_stft', f)
 
-        del cqt
-        stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
-        assert stft.shape[0] == 1 + 2048 // 2
-        assert np.ceil(len(x)/512) <= stft.shape[1] <= np.ceil(len(x)/512)+1
-        del x
+    f = librosa.feature.rms(S=stft)
+    feature_stats('rmse', f)
 
-        f = librosa.feature.chroma_stft(S=stft**2, n_chroma=12)
-        feature_stats('chroma_stft', f)
+    f = librosa.feature.spectral_centroid(S=stft)
+    feature_stats('spectral_centroid', f)
+    f = librosa.feature.spectral_bandwidth(S=stft)
+    feature_stats('spectral_bandwidth', f)
+    f = librosa.feature.spectral_contrast(S=stft, n_bands=6)
+    feature_stats('spectral_contrast', f)
+    f = librosa.feature.spectral_rolloff(S=stft)
+    feature_stats('spectral_rolloff', f)
 
-        f = librosa.feature.rms(S=stft)
-        feature_stats('rmse', f)
+    mel = librosa.feature.melspectrogram(sr=sr, S=stft**2)
+    del stft
+    f = librosa.feature.mfcc(S=librosa.power_to_db(mel), n_mfcc=20)
+    feature_stats('mfcc', f)
 
-        f = librosa.feature.spectral_centroid(S=stft)
-        feature_stats('spectral_centroid', f)
-        f = librosa.feature.spectral_bandwidth(S=stft)
-        feature_stats('spectral_bandwidth', f)
-        f = librosa.feature.spectral_contrast(S=stft, n_bands=6)
-        feature_stats('spectral_contrast', f)
-        f = librosa.feature.spectral_rolloff(S=stft)
-        feature_stats('spectral_rolloff', f)
-
-        mel = librosa.feature.melspectrogram(sr=sr, S=stft**2)
-        del stft
-        f = librosa.feature.mfcc(S=librosa.power_to_db(mel), n_mfcc=20)
-        feature_stats('mfcc', f)
-        processed+=1
-
-    except Exception as e:
-        print(f'error = {e}')
-        error+=1
-        error_id=tid
-
-    return features, processed, error, error_id
+    return features, processed
 
 
 def main():
@@ -335,33 +326,33 @@ def main():
     # tracks[np.logical_and(tracks.index >= 30000,tracks.index < 60000)][tracks['set','subset'] == 'small']
     
     #initializing counters of fails vs success
-    error_list=[]
+    skip_list=[]
     processed_count=0
-    error_count=0
+    skip_count=0
     
     # creating iterable from the function, nb of processors and list for the function to loop over
     pool = multiprocessing.Pool(nb_workers)
     it = pool.imap_unordered(compute_features, tids)
 
     # iteration
-    for row, processed, error, error_id in it:
+    for row, processed, skip, skip_id in it:
         features.loc[row.name] = row
         processed_count+=processed
-        error_count+=error
-        if error_id:
-            error_list.append(error_id)
+        skip_count+=error
+        if skip_id:
+            skip_list.append(skip_id)
 
     save(features)
     print(f'''
             ###########################
             processed: {processed_count}
-            errors: {error_count}
+            skip: {skip_count}
             ###########################
-            errors log below:
+            skip log below:
             ''')
 
-    for error_id in error_list:
-        print(f'            {error_id}')
+    for skip_id in skip_list:
+        print(f'            {skip_id}')
     
     print('            ###########################')
 
@@ -374,9 +365,9 @@ def main_own_collection(nb_of_tracks=5, offset=0):
     features = pd.DataFrame(index=[f"{x[0]}_test" for x in song_urls], columns=columns(), dtype=np.float32)
 
     #initializing counters of fails vs success
-    error_list=[]
+    skip_list=[]
     processed_count=0
-    error_count=0
+    skip_count=0
     
     # More than usable CPUs to be CPU bound, not I/O bound. Beware memory.
     nb_workers = int(1.5 * len(os.sched_getaffinity(0)))
@@ -386,27 +377,67 @@ def main_own_collection(nb_of_tracks=5, offset=0):
     it = pool.imap_unordered(compute_features_from_url, song_urls)
 
     # iteration
-    for row, processed, error, error_id in it:
+    for row, processed, error, skip_id in it:
         features.loc[row.name] = row
         processed_count+=processed
-        error_count+=error
-        if error_id:
-            error_list.append(error_id)
+        skip_count+=error
+        if skip_id:
+            skip_list.append(skip_id)
 
     save(features, f"features_{offset}", 10)
     print(f'''
             ###########################
             processed: {processed_count}
-            errors: {error_count}
+            skips: {skip_count}
             ###########################
-            errors log below:
+            skip log below:
             ''')
 
-    for error_id in error_list:
-        print(f'            {error_id}')
+    for skip_id in skip_list:
+        print(f'            {skip_id}')
     
     print('            ###########################')
 
+
+def main_from_metadata(playlist_id= '27moYnSBt2dnRGl4titwFB', nb_of_tracks=10, offset=0, playlist_genre='tbc'):
+    # tracks = utils.load('../raw_data/fma_metadata/tracks.csv')
+    # generate extracts list
+    metadata_and_passed_tuple = utils_api.get_playlist_metadata(playlist_id = playlist_id, nb_of_tracks=nb_of_tracks, offset=offset, playlist_genre=playlist_genre)
+    metadata = metadata_and_passed_tuple[0]
+    metadata.to_csv(f'../raw_data/metadata_batch_{offset}.csv')
+    features = pd.DataFrame(index=metadata.index, columns=columns(), dtype=np.float32)
+
+    #loading metadata df
+    metadata = pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0)
+    
+    #initializing counters of fails vs success
+    processed_count=0
+    passed = metadata_and_passed_tuple[1]
+    passed += metadata.preview_url.shape[0] - metadata.dropna().preview_url.shape[0]
+    
+    metadata = pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0).dropna()
+    iterable = [(metadata.preview_url.index[k],metadata.preview_url[k]) for k in range(0,len(metadata.preview_url.index))]
+
+    # More than usable CPUs to be CPU bound, not I/O bound. Beware memory.
+    nb_workers = int(1.5 * len(os.sched_getaffinity(0)))
+    
+    # creating iterable from the function, nb of processors and list for the function to loop over
+    pool = multiprocessing.Pool(nb_workers)
+    it = pool.imap_unordered(compute_features_from_url, iterable)
+
+    # iteration
+    for row, processed in it:
+        features.loc[row.name] = row
+        processed_count+=processed
+
+    features.to_csv(f'../raw_data/features_batch_{offset}.csv', float_format='%.{}e'.format(10))
+
+    print(f'''
+            ###########################
+            processed: {processed_count}
+            no preview available : {passed}
+            ###########################
+            ''')
 
 def main_one(tid):
     '''
@@ -430,7 +461,7 @@ def save(features, filename='features_new',ndigits=10):
     features.sort_index(axis=0, inplace=True)
     features.sort_index(axis=1, inplace=True)
 
-    features.to_csv(f'{filename}.csv', float_format='%.{}e'.format(ndigits))
+    features.to_csv(f'../raw_data/{filename}.csv', float_format='%.{}e'.format(ndigits))
 
 
 def test(features, ndigits):
@@ -444,10 +475,29 @@ def test(features, ndigits):
 
 
 if __name__ == "__main__":
-    list_of_df=[]
-    for k in range(0,10):
+    # CODE FOR FEATURES EXTRACTION FROM BIG PLAYLIST
+    list_of_features_df=[]
+    list_of_metadata_df=[]
+    for k in range(0,21):
         offset = 0+50*k
-        main_own_collection(nb_of_tracks=50,offset=offset)
-        list_of_df.append(pd.read_csv(f'features_{offset}.csv', index_col=0, header = [0,1,2]))
-    features_test = pd.concat([df for df in list_of_df]).dropna()
+        main_from_metadata(playlist_id= '1SFQ93cdTcXXjw75KyoVFw', nb_of_tracks=50, offset=offset, playlist_genre='Electronic')
+        list_of_features_df.append(pd.read_csv(f'../raw_data/features_batch_{offset}.csv', index_col=0, header = [0,1,2]))
+        list_of_metadata_df.append(pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0))
+        os.remove(f'../raw_data/features_batch_{offset}.csv')
+        os.remove(f'../raw_data/metadata_batch_{offset}.csv')
+    features_test = pd.concat([df for df in list_of_features_df])
+    metadata_test = pd.concat([df for df in list_of_metadata_df])
     features_test.to_csv('../raw_data/features_test.csv')
+    metadata_test.to_csv('../raw_data/metadata_test.csv')
+
+
+
+
+# CODE FOR FEATURES EXTRACTION FROM SAVED COLLECTION 
+    # list_of_df=[]
+    # for k in range(0,10):
+    #     offset = 0+50*k
+    #     main_own_collection(nb_of_tracks=50,offset=offset)
+    #     list_of_df.append(pd.read_csv(f'features_{offset}.csv', index_col=0, header = [0,1,2]))
+    # features_test = pd.concat([df for df in list_of_df]).dropna()
+    # features_test.to_csv('../raw_data/features_test.csv')
