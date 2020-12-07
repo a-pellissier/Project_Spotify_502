@@ -27,6 +27,63 @@ def get_own_collection_preview_urls(nb_of_tracks=5, offset=0):
     
     return song_urls
 
+def get_playlist_metadata(playlist_id = '27moYnSBt2dnRGl4titwFB', nb_of_tracks=10, offset=0, playlist_genre='tbc'):
+    '''
+    Returns dataframe with index = ids of tracks in the playlist and columns = artists, track name, preview url, genres and main genre
+    '''
+    metadata = pd.DataFrame(columns=['artists','track_name','preview_url','genres','top_genre','genre_summary','playlist_genre','playlist_id'])
+
+    lz_uri = f'spotify:playlist:{playlist_id}'
+    spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
+    results = spotify.playlist_tracks(lz_uri, limit=nb_of_tracks, offset=offset)
+    passed = 0
+
+    for idx, item in enumerate(results['items']):
+        #creating row of metadata for the given track
+        track = item['track']
+        tid = track['id']
+        
+        #all the below is to get the genre
+        #get artist id of a given track
+        lz_uri = f'spotify:track:{tid}'
+        if tid != None:
+            try:
+                res = spotify.track(lz_uri)
+                artist_id = res['album']['artists'][0]['id']
+
+                #get genres from the artist
+                lz_uri = f'spotify:artist:{artist_id}'
+                spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
+                res = spotify.artist(lz_uri)
+            
+                if type(res['genres']) == list:
+                    metadata.loc[tid, 'genres'] = res['genres']
+                    metadata.loc[tid,'top_genre'] = genre_spotify_to_FMA(res['genres'])[0]
+                    genre_summary_list = []
+                    for key, value in genre_spotify_to_FMA(res['genres'])[1].items():
+                        temp = [key,value]
+                        genre_summary_list.append(temp)
+                    metadata.loc[tid, 'genre_summary'] = genre_summary_list
+                else:
+                    metadata.loc[tid, 'genres'] = None
+                    metadata.loc[tid,'top_genre'] = None
+                    metadata.loc[tid, 'genre_summary'] = None
+            
+                #easy columns to fill in the floop
+                metadata.loc[tid,'artists'] =track['artists'][0]['name']
+                metadata.loc[tid,'track_name'] =track['name']
+                metadata.loc[tid,'preview_url'] = track['preview_url']
+            except Exception:
+                passed += 1
+        else:
+            passed +=1
+
+    # columns filled at once
+    metadata.playlist_genre = playlist_genre
+    metadata.playlist_id = playlist_id
+
+    return metadata, passed
+
 def generate_mp3_from_sample_url(track_id, url):
     sample_30s = urlopen(url)
     mp3_path = f"sample_{track_id}.mp3"
@@ -69,12 +126,12 @@ def get_own_collection_genres(nb_of_tracks=5, offset=0):
             results = spotify.track(lz_uri)
             artist_id = results['album']['artists'][0]['id']
 
-            #get genres from the album
+            #get genres from the artist
             lz_uri = f'spotify:artist:{artist_id}'
             spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
             results = spotify.artist(lz_uri)
-            if results['genres'] != None:
-                if tid != None:
+            if type(results['genres']) == list:
+                if type(tid) == str:
                     genres_lists.append(results['genres'])
                     tids_list.append(tid)
         except Exception as e:
@@ -148,6 +205,9 @@ def gen_y_from_saved_collection(nb_of_iter=10):
 
 
 if __name__ == '__main__':
-    gen_y_from_saved_collection(10)
+    df = get_playlist_metadata(playlist_id = '27moYnSBt2dnRGl4titwFB', nb_of_tracks=10, offset=0)
+    df.to_csv('test_metadata.csv')
+
+    # OLD ---gen_y_from_saved_collection(10)
 
     #ERROR BECAUSE TIDS AND GENRES DO NOT MATCHUP DUE TO SKIPS, SOLUTION IS TO NOT SAVE ONE OR THE OTHER WHEN THERE IS AN ERROR
