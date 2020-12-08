@@ -35,7 +35,7 @@ class Data():
     path_x_dl_small = os.path.join('/',abs_path, 'raw_data/fma_small/fma_small')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
-    save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
+    save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms_small')
 
     def __init__(self):
         return None
@@ -208,7 +208,7 @@ class Data_DL(Data):
             X_scaled = X_std * (max - min) + min
             return X_scaled
         image_path = f'{os.path.join(save_path, filename[-10:-4])}.{format_}'
-        if not os.path.exists(f'{image_path}.{format_}'):
+        if not os.path.exists(f'{image_path}'):
             temp = self.generator_spectogram(filename)
             if temp != None:    
                 mel, sr  = temp
