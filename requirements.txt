@@ -37,3 +37,4 @@ python-dotenv
 spotipy
 tensorflow
 imblearn
+google-cloud
