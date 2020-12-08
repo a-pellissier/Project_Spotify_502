@@ -31,8 +31,12 @@ def generator():
 def initiate_model(): 
     ### First convolution & max-pooling
     model = Sequential()
-    model.add(layers.Conv2D(8, (4,4), activation = 'relu', input_shape=(128, 2582, 1)))
-    model.add(layers.MaxPool2D(pool_size=(2,2)))
+    model.add(layers.Conv2D(16, (3,3), activation = 'relu', input_shape=(128, 2582, 1)))
+    model.add(layers.MaxPool2D(pool_size=(2,4)))
+
+        
+    model.add(layers.Conv2D(32, (3,3), activation = 'relu'))
+    model.add(layers.MaxPool2D(pool_size=(2,4)))
 
     ### Flattening
     model.add(layers.Flatten())
