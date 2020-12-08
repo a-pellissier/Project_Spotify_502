@@ -358,45 +358,44 @@ def main():
 
 
 def main_own_collection(nb_of_tracks=5, offset=0):
-    tracks = utils.load('../raw_data/fma_metadata/tracks.csv')
+   # tracks = utils.load('../raw_data/fma_metadata/tracks.csv')
     # generate extracts list
-    song_urls = utils_api.get_own_collection_preview_urls(nb_of_tracks=nb_of_tracks, offset=offset)
+    metadata_and_passed_tuple = utils_api.get_collection_metadata(nb_of_tracks=nb_of_tracks, offset=offset)
+    metadata = metadata_and_passed_tuple[0]
+    metadata.to_csv(f'../raw_data/metadata_batch_{offset}.csv')
+    features = pd.DataFrame(index=metadata.index, columns=columns(), dtype=np.float32)
 
-    features = pd.DataFrame(index=[f"{x[0]}_test" for x in song_urls], columns=columns(), dtype=np.float32)
-
-    #initializing counters of fails vs success
-    skip_list=[]
-    processed_count=0
-    skip_count=0
+    #loading metadata df
+    metadata = pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0)
     
+    #initializing counters of fails vs success
+    processed_count=0
+    passed = metadata_and_passed_tuple[1]
+    passed += metadata.preview_url.shape[0] - metadata.dropna().preview_url.shape[0]
+    
+    metadata = pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0).dropna()
+    iterable = [(metadata.preview_url.index[k],metadata.preview_url[k]) for k in range(0,len(metadata.preview_url.index))]
+
     # More than usable CPUs to be CPU bound, not I/O bound. Beware memory.
     nb_workers = int(1.5 * len(os.sched_getaffinity(0)))
     
     # creating iterable from the function, nb of processors and list for the function to loop over
     pool = multiprocessing.Pool(nb_workers)
-    it = pool.imap_unordered(compute_features_from_url, song_urls)
+    it = pool.imap_unordered(compute_features_from_url, iterable)
 
     # iteration
-    for row, processed, error, skip_id in it:
+    for row, processed in it:
         features.loc[row.name] = row
         processed_count+=processed
-        skip_count+=error
-        if skip_id:
-            skip_list.append(skip_id)
 
-    save(features, f"features_{offset}", 10)
+    features.to_csv(f'../raw_data/features_batch_{offset}.csv', float_format='%.{}e'.format(10))
+
     print(f'''
             ###########################
             processed: {processed_count}
-            skips: {skip_count}
+            no preview available : {passed}
             ###########################
-            skip log below:
             ''')
-
-    for skip_id in skip_list:
-        print(f'            {skip_id}')
-    
-    print('            ###########################')
 
 
 def main_from_metadata(playlist_id= '27moYnSBt2dnRGl4titwFB', nb_of_tracks=10, offset=0, playlist_genre='tbc'):
@@ -439,6 +438,7 @@ def main_from_metadata(playlist_id= '27moYnSBt2dnRGl4titwFB', nb_of_tracks=10, o
             ###########################
             ''')
 
+
 def main_one(tid):
     '''
     this function returns a dataframe with the features only for the few tids passed as argument
@@ -475,12 +475,12 @@ def test(features, ndigits):
 
 
 if __name__ == "__main__":
-    # CODE FOR FEATURES EXTRACTION FROM BIG PLAYLIST
+    # CODE FOR FEATURES EXTRACTION FROM USER COLLECTION
     list_of_features_df=[]
     list_of_metadata_df=[]
-    for k in range(0,21):
+    for k in range(0,1):
         offset = 0+50*k
-        main_from_metadata(playlist_id= '1SFQ93cdTcXXjw75KyoVFw', nb_of_tracks=50, offset=offset, playlist_genre='Electronic')
+        main_own_collection(nb_of_tracks=20, offset=offset)
         list_of_features_df.append(pd.read_csv(f'../raw_data/features_batch_{offset}.csv', index_col=0, header = [0,1,2]))
         list_of_metadata_df.append(pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0))
         os.remove(f'../raw_data/features_batch_{offset}.csv')
@@ -490,14 +490,19 @@ if __name__ == "__main__":
     features_test.to_csv('../raw_data/features_test.csv')
     metadata_test.to_csv('../raw_data/metadata_test.csv')
 
-
-
-
-# CODE FOR FEATURES EXTRACTION FROM SAVED COLLECTION 
-    # list_of_df=[]
-    # for k in range(0,10):
+    # # CODE FOR FEATURES EXTRACTION FROM BIG PLAYLIST
+    # list_of_features_df=[]
+    # list_of_metadata_df=[]
+    # for k in range(0,20):
     #     offset = 0+50*k
-    #     main_own_collection(nb_of_tracks=50,offset=offset)
-    #     list_of_df.append(pd.read_csv(f'features_{offset}.csv', index_col=0, header = [0,1,2]))
-    # features_test = pd.concat([df for df in list_of_df]).dropna()
+    #     main_from_metadata(playlist_id= '6A5oQMH0gS3oY5OrUSo650', nb_of_tracks=50, offset=offset, playlist_genre='Jazz')
+    #     list_of_features_df.append(pd.read_csv(f'../raw_data/features_batch_{offset}.csv', index_col=0, header = [0,1,2]))
+    #     list_of_metadata_df.append(pd.read_csv(f'../raw_data/metadata_batch_{offset}.csv', index_col=0))
+    #     os.remove(f'../raw_data/features_batch_{offset}.csv')
+    #     os.remove(f'../raw_data/metadata_batch_{offset}.csv')
+    # features_test = pd.concat([df for df in list_of_features_df])
+    # metadata_test = pd.concat([df for df in list_of_metadata_df])
     # features_test.to_csv('../raw_data/features_test.csv')
+    # metadata_test.to_csv('../raw_data/metadata_test.csv')
+
+
