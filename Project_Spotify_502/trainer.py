@@ -16,8 +16,15 @@ from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 
+import os
+import joblib
+
+
 
 class Trainer():
+
+    abs_path = __file__.replace('Project_Spotify_502/trainer.py', '')
+    saving_path = os.path.join(abs_path, 'saved_pipes')
 
     def __init__(self, X, y):
         """
@@ -60,8 +67,8 @@ class Trainer():
             params = {}
             params['learning_rate'] = 0.2          # 0.01 - 0.2
             params['n_estimators'] = 125
-            params['subsample'] = 0.7              # Fraction of observations to be use
-            params['colsample_bytree'] = 0.7       # Fraction of features to be use
+            params['subsample'] = 0.65              # Fraction of observations to be use
+            params['colsample_bytree'] = 0.85       # Fraction of features to be use
             params['max_depth'] = 8                # 5/15
 
             model_pipe = Pipeline([
@@ -85,10 +92,12 @@ class Trainer():
 
         return acc
 
+
     def class_report(self, X_test, y_test):
         """return the classification report"""
 
         print(classification_report(y_test, self.pipeline.predict(X_test)))
+
 
     def conf_matrix(self, X, y):
         y_pred = self.pipeline.predict(X)
@@ -106,7 +115,19 @@ class Trainer():
         return cmtx
 
 
+    def save_pipe(self, model_name = 'model', path = saving_path):
 
+        ls_mod = os.listdir(path)
+
+        if model_name in ls_mod:
+            n = ls_mod.count(model_name)
+            joblib.dump(self.pipeline, os.path.join(path, f"{model_name}_{n}.joblib"))
+
+        else:
+            joblib.dump(self.pipeline, os.path.join(path, f"{model_name}.joblib"))
+
+
+        print(f"saved {model_name}.joblib locally")
 
 
 
