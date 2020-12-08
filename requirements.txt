@@ -37,7 +37,11 @@ python-dotenv
 spotipy
 tensorflow
 imblearn
+SoundFile
+sndfile
 google-cloud
 
 uvicorn
 FastApi
+
+xgboost
