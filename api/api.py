@@ -28,7 +28,7 @@ def predict_fare(key):
     url = get_one_url(key)
 
     # TO DO : appliquer une fonction qui sort les features 
-    X_test = pd.Dataframe(compute_features_from_url(url))
+    X_test = pd.Dataframe(compute_features_from_url(url)[0])
 
     y_pred = model.predict(X_test)
     return {'prediction':f'{y_pred[0]}'}
