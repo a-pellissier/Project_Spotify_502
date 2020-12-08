@@ -422,7 +422,7 @@ class DataSpotify():
         target = target.set_index('Unnamed: 0')[['playlist_genre']]
         target = target.rename_axis('tid').rename(columns = {'playlist_genre':'main_genre'})
 
-        data = features.merge(target, how = 'inner', on = 'tid').reset_index(drop=True)
+        data = features.merge(target, how = 'inner', on = 'tid')
 
         X = data.drop(columns = ['main_genre'])
         y = data.main_genre
