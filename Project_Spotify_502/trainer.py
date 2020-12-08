@@ -29,31 +29,53 @@ class Trainer():
         self.y = y
 
 
-    def set_pipeline(self):
+    def set_pipeline(self, set_spotify = False):
         """defines the pipeline as a class attribute"""
 
-        # dimension reduction & scaling
-        lsvc = LinearSVC(C = 0.0008, penalty="l1", dual=False, max_iter = 500)
+        # SET FMA
+        if set_spotify == False:
+            # dimension reduction & scaling
+            lsvc = LinearSVC(C = 0.0008, penalty="l1", dual=False, max_iter = 500)
 
-        preprocc_pipe = Pipeline([
-                            ('Scaler', StandardScaler()),
-                            ('SelectFrom', SelectFromModel(lsvc, prefit = False))
+            preprocc_pipe = Pipeline([
+                                ('Scaler', StandardScaler()),
+                                ('SelectFrom', SelectFromModel(lsvc, prefit = False))
+                            ])
+
+            # Add model
+            model_pipe = Pipeline([
+                            ('preprocessing', preprocc_pipe),
+                            ('model_SVM', SVC(kernel = 'rbf', C = 2.11111))
                         ])
 
-        # Add model
-        model_pipe = Pipeline([
-                        ('preprocessing', preprocc_pipe),
-                        ('model_SVM', SVC(kernel = 'rbf', C = 2.11111))
-                    ])
+        # SET SPOTIFY
+        else:
+            lsvc = LinearSVC(C = 0.0035, penalty="l1", dual=False, max_iter = 1000)
+
+            preprocc_pipe = Pipeline([
+                                ('Scaler', StandardScaler()),
+                                ('SelectFrom', SelectFromModel(lsvc, prefit = False))
+                            ])
+
+            params = {}
+            params['learning_rate'] = 0.2          # 0.01 - 0.2
+            params['n_estimators'] = 125
+            params['subsample'] = 0.7              # Fraction of observations to be use
+            params['colsample_bytree'] = 0.7       # Fraction of features to be use
+            params['max_depth'] = 8                # 5/15
+
+            model_pipe = Pipeline([
+                            ('preprocessing', preprocc_pipe),
+                            ('model_SVM', XGBClassifier(objective = 'multi:softmax', **params))
+                        ])
 
         return model_pipe
 
 
 
-
-    def run(self):
+    def run(self, set_spot = False):
         """set and train the pipeline"""
-        self.pipeline = self.set_pipeline()
+        self.pipeline = self.set_pipeline(set_spotify = set_spot)
         self.pipeline.fit(self.X, self.y)
 
 
@@ -82,6 +104,11 @@ class Trainer():
             columns=['pred:{:}'.format(x) for x in class_labels])
 
         return cmtx
+
+
+
+
+
 
 
 
