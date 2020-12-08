@@ -41,3 +41,5 @@ google-cloud
 
 uvicorn
 FastApi
+
+xgboost

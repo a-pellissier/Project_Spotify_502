@@ -23,7 +23,7 @@ LOCAL_PATH=/home/achille/code/a-pellissier/Project_Spotify_502/raw_data/generate
 
 # bucket directory in which to store the uploaded file (we choose to name this data as a convention)
 BUCKET_FOLDER=data
-BUCKET_TRAINING_FOLDER =generated_spectrograms_small
+BUCKET_TRAINING_FOLDER=generated_spectrograms_small
 
 # name for the uploaded file inside the bucket folder (here we choose to keep the name of the uploaded file)
 # BUCKET_FILE_NAME=another_file_name_if_I_so_desire.csv
