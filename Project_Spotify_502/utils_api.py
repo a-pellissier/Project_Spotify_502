@@ -204,6 +204,19 @@ def gen_y_from_saved_collection(nb_of_iter=10):
     return df
 
 
+def get_one_url(song_id):
+    '''
+    Returns preview_url and song_id
+    '''
+    scope = "user-library-read"
+    sp_id = f'spotify:track:{song_id}'
+
+    spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
+    url = spotify.track(sp_id)
+    song_urls = (url, song_id)
+    
+    return song_urls
+
 if __name__ == '__main__':
     df = get_playlist_metadata(playlist_id = '27moYnSBt2dnRGl4titwFB', nb_of_tracks=10, offset=0)
     df.to_csv('test_metadata.csv')
