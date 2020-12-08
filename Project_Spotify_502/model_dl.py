@@ -3,25 +3,39 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.backend import expand_dims
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
+import joblib
 
 from PIL import ImageFile
 
+from Project_Spotify_502.custom_generator import flow_from_google_storage, GoogleStorageIterator
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-def generator(directory_train, directory_val): 
-    generator = ImageDataGenerator()
-    train = generator.flow_from_directory(directory = directory_train, \
-                                        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 32)
+BUCKET_NAME = 'project_spotify_pellissier'
+PROJECT = 'optimal-jigsaw-296709'
+TRAIN_DIR = 'generated_spectrograms_small/png/train/'
+VAL_DIR = 'generated_spectrograms_small/png/val/'
 
-    val = generator.flow_from_directory(directory = directory_val, \
-                                        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 32)
+
+def generator(): 
+    generator = ImageDataGenerator()
+    train = flow_from_google_storage(imageDataGen=generator, project=PROJECT,\
+        bucket=BUCKET_NAME, directory=TRAIN_DIR,\
+        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 64)
+
+    val = flow_from_google_storage(imageDataGen=generator, project=PROJECT,\
+        bucket=BUCKET_NAME, directory=VAL_DIR,\
+        target_size = (128, 2582), color_mode = 'grayscale', batch_size = 64)
     return train, val
 
 def initiate_model(): 
     ### First convolution & max-pooling
     model = Sequential()
-    model.add(layers.Conv2D(8, (4,4), activation = 'relu', input_shape=(128, 2582, 1)))
-    model.add(layers.MaxPool2D(pool_size=(2,2)))
+    model.add(layers.Conv2D(16, (4,4), activation = 'relu', input_shape=(128, 2582, 1)))
+    model.add(layers.MaxPool2D(pool_size=(2,4)))
+
+    model.add(layers.Conv2D(32, (3,3), activation = 'relu'))
+    model.add(layers.MaxPool2D(pool_size=(2,4)))
 
     ### Flattening
     model.add(layers.Flatten())
@@ -37,7 +51,21 @@ def initiate_model():
     
     return model
 
+def save_model(reg, client):
+    """method that saves the model into a .joblib file and uploads it on Google Storage /models folder
+    HINTS : use joblib library and google-cloud-storage"""
+    storage_location = 'models/model.joblib'
+    
+    joblib.dump(reg, 'model.joblib')
+    print("saved model.joblib locally")
+
+    bucket = client.bucket(BUCKET_NAME)
+    storage_location = bucket.blob(storage_location)
+    storage_location.upload_from_filename('model.joblib')
+    print(f"uploaded model.joblib to gcp cloud storage under \n => {storage_location}")
+
 if __name__ == '__main__': 
     model = initiate_model()
-    train, val = generator('../raw_data/generated_spectrograms/train/', '../raw_data/generated_spectrograms/val/')
-    model.fit(train, epochs=1, validation_data = val)
+    X_train, X_val = generator()
+    model.fit(X_train, epochs=1, validation_data=X_val)
+    save_model(model, X_train.storage_client)
