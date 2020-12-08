@@ -209,10 +209,10 @@ def get_one_url(song_id):
     Returns preview_url and song_id
     '''
     scope = "user-library-read"
-    sp_id = f'spotify:track:{song_id}'
+    '''sp_id = f'spotify:track:{song_id}'''
 
     spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
-    url = spotify.track(sp_id)
+    url = spotify.track(song_id)
     song_urls = (song_id, url['preview_url'])
     
     return song_urls
