@@ -37,6 +37,7 @@ python-dotenv
 spotipy
 tensorflow
 imblearn
+SoundFile
 google-cloud
 
 uvicorn
