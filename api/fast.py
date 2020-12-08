@@ -14,8 +14,8 @@ MODEL_NAME = 'project_spotify_502'
 
 app = FastAPI()
 
-model = joblib.load('model.joblib')
-boolean = True
+'''model = joblib.load('model.joblib')'''
+boolean = 'qdihcbcn'
 
 @app.get("/")
 def index():
@@ -23,12 +23,12 @@ def index():
 
 # define a root `/` endpoint
 @app.get("/predict_genre/{key}")
-def predict_fare(key):
+def predict_genre(key):
     # key = track_id spotify de la clé 
     url = get_one_url(key)
 
     # TO DO : appliquer une fonction qui sort les features 
-    X_test = pd.Dataframe(compute_features_from_url(url))
+    X_test = pd.Dataframe(compute_features_from_url(url)[0])
 
     y_pred = model.predict(X_test)
     return {'prediction':f'{y_pred[0]}'}
