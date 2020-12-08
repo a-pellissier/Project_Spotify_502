@@ -38,3 +38,6 @@ spotipy
 tensorflow
 imblearn
 google-cloud
+
+uvicorn
+FastApi
