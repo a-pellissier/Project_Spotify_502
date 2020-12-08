@@ -59,8 +59,7 @@ gcp_submit_training:
 		--python-version=${PYTHON_VERSION} \
 		--runtime-version=${RUNTIME_VERSION} \
 		--region ${REGION} \
-		--stream-logs \
-		--scale-tier BASIC_GPU
+		--stream-logs
 
 clean:
 	@rm -f */version.txt
