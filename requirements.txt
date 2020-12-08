@@ -38,6 +38,7 @@ spotipy
 tensorflow
 imblearn
 SoundFile
+sndfile
 google-cloud
 
 uvicorn
