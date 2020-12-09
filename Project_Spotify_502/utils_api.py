@@ -156,17 +156,29 @@ def generate_mp3_from_sample_url(track_id, url):
     output.write(sample_30s.read())
     return mp3_path
 
-def generate_spectrogram_url(track_id, url): 
+def generate_spectrogram_url(track_id, url, image = False): 
     #loading with librosa
+    def scale_minmax(X, min=0.0, max=1.0):
+        X_std = (X - X.min()) / (X.max() - X.min())
+        X_scaled = X_std * (max - min) + min
+        return X_scaled
     mp3_path = generate_mp3_from_sample_url(track_id, url)
     x, sr = librosa.load(mp3_path, sr=44100, mono=True, duration = 29.976598639455784)
     stft = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
     mel = librosa.feature.melspectrogram(sr=sr, S=librosa.amplitude_to_db(stft))
-    img = np.flip(mel, axis=0) # put low frequencies at the bottom in image
+    img = scale_minmax(mel, 0, 255).astype(np.uint8)
+    img = np.flip(img, axis=0) # put low frequencies at the bottom in image
     img = 255-img # invert. make black==more energy
-    image_path = f'{track_id}.png'
-    matplotlib.image.imsave(image_path, img, cmap='gray')
-    return None
+    if image: 
+        image_path = f'{track_id}.png'
+        matplotlib.image.imsave(image_path, img, cmap='gray')
+        return None
+    del mel, stft, x, sr
+    try:
+        os.remove(mp3_path)
+    except Exception:
+        print("all good bro, temp audio file already wiped")
+    return img
 
 def get_own_collection_genres(nb_of_tracks=5, offset=0):
     '''
