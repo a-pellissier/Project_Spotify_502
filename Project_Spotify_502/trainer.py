@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import cross_val_predict
 
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -84,6 +85,11 @@ class Trainer():
         """set and train the pipeline"""
         self.pipeline = self.set_pipeline(set_spotify = set_spot)
         self.pipeline.fit(self.X, self.y)
+
+    def eval_spot(self):
+        mod = self.set_pipeline(set_spotify = True)
+        y_pred = cross_val_predict(mod, self.X, self.y, cv = 5)
+        print(classification_report(self.y, y_pred))
 
 
     def evaluate(self, X_test, y_test):
