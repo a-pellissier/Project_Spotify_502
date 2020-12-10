@@ -9,6 +9,6 @@ COPY Project_Spotify_502 /Project_Spotify_502
 COPY api /api
 
 ENV SPOTIPY_CLIENT_ID="7d9bf533f1494fa0b2603b1f54cdadd0"
-ENV SPOTIPY_CLIENT_SECRET="b2d8af2ad1da4f9caa3f5bf11baa98f7"
+ENV SPOTIPY_CLIENT_SECRET="362259e08fd64f8ca32b138c35cc1cf7"
 
 CMD uvicorn api.fast:app --reload --host 0.0.0.0 --port $PORT
