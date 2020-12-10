@@ -37,7 +37,7 @@ class Trainer():
         self.y = y
 
 
-    def set_pipeline(self, set_spotify = False):
+    def set_pipeline(self, set_spotify = True, model = 'svm'):
         """defines the pipeline as a class attribute"""
 
         # SET FMA
@@ -58,52 +58,61 @@ class Trainer():
 
         # SET SPOTIFY
         else:
-            lsvc = LinearSVC(C = 0.0035, penalty="l1", dual=False, max_iter = 1000)
+            lsvc = LinearSVC(C = 0.003, penalty="l1", dual=False, max_iter = 1000)
 
             preprocc_pipe = Pipeline([
                                 ('Scaler', StandardScaler()),
                                 ('SelectFrom', SelectFromModel(lsvc, prefit = False))
                             ])
 
-            params = {}
-            params['learning_rate'] = 0.2          # 0.01 - 0.2
-            params['n_estimators'] = 125
-            params['subsample'] = 0.65              # Fraction of observations to be use
-            params['colsample_bytree'] = 0.85       # Fraction of features to be use
-            params['max_depth'] = 8                # 5/15
+            if model == 'svm':
+                model_pipe = Pipeline([
+                                ('preprocessing', preprocc_pipe),
+                                ('model_SVM', SVC(kernel = 'rbf'))
+                            ])
 
-            model_pipe = Pipeline([
-                            ('preprocessing', preprocc_pipe),
-                            ('model_SVM', XGBClassifier(objective = 'multi:softmax', **params))
-                        ])
+            elif model =='xgboost':
+
+                params = {}
+                params['learning_rate'] = 0.2          # 0.01 - 0.2
+                params['n_estimators'] = 150
+                params['subsample'] = 0.75              # Fraction of observations to be use
+                params['colsample_bytree'] = 0.75       # Fraction of features to be use
+                params['max_depth'] = 5
+
+
+                model_pipe = Pipeline([
+                                ('preprocessing', preprocc_pipe),
+                                ('model_xgb', XGBClassifier(objective = 'multi:softmax', **params))
+                            ])
 
         return model_pipe
 
 
     def preprocess_pipe_spotify(self):
-        lsvc = LinearSVC(C = 0.0035, penalty="l1", dual=False, max_iter = 1000)
+        lsvc = LinearSVC(C = 0.003, penalty="l1", dual=False, max_iter = 1000)
 
         preprocc_pipe = Pipeline([
                             ('Scaler', StandardScaler()),
                             ('SelectFrom', SelectFromModel(lsvc, prefit = False))
                         ])
 
-        return preprocc_pipe
+        return preprocc_pipe.fit(self.X, self.y)
 
 
 
-    def run(self, set_spot = False):
+    def run(self, set_spot = True, model = 'xgboost'):
         """set and train the pipeline"""
-        self.pipeline = self.set_pipeline(set_spotify = set_spot)
+        self.pipeline = self.set_pipeline(set_spotify = set_spot, model='xgboost')
         self.pipeline.fit(self.X, self.y)
 
-    def class_report_spot(self):
-        mod = self.set_pipeline(set_spotify = True)
+    def class_report_spot(self, model = 'svm'):
+        mod = self.set_pipeline(set_spotify = True, model = model)
         y_pred = cross_val_predict(mod, self.X, self.y, cv = 5)
-        report = classification_report(self.y, y_pred, output_dict=True)
-        df_report = pd.DataFrame(report).transpose()
+        report = classification_report(self.y, y_pred)#, output_dict=True)
+        #df_report = pd.DataFrame(report).transpose()
 
-        return df_report
+        return print(report)
 
 
     def conf_matrix_spot(self):
