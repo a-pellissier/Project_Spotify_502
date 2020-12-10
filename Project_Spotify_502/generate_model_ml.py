@@ -5,10 +5,6 @@ from Project_Spotify_502 import trainer as tr
 if __name__ == "__main__":
     print ('entering run')
 
-    # Dataset generation
-    dl_data = u.DataSpotify()
-    dl_data.generate_spot_data()
-"""
     # Data loading
     data = dl_data.get_train_set()
 
@@ -20,4 +16,4 @@ if __name__ == "__main__":
     gen_model.run(set_spot=True)
 
     gen_model.save_pipe(model_name = 'model_spotify')
-"""
+

@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import cross_val_predict
 
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -79,11 +80,48 @@ class Trainer():
         return model_pipe
 
 
+    def preprocess_pipe_spotify(self):
+        lsvc = LinearSVC(C = 0.0035, penalty="l1", dual=False, max_iter = 1000)
+
+        preprocc_pipe = Pipeline([
+                            ('Scaler', StandardScaler()),
+                            ('SelectFrom', SelectFromModel(lsvc, prefit = False))
+                        ])
+
+        return preprocc_pipe
+
+
 
     def run(self, set_spot = False):
         """set and train the pipeline"""
         self.pipeline = self.set_pipeline(set_spotify = set_spot)
         self.pipeline.fit(self.X, self.y)
+
+    def class_report_spot(self):
+        mod = self.set_pipeline(set_spotify = True)
+        y_pred = cross_val_predict(mod, self.X, self.y, cv = 5)
+        report = classification_report(self.y, y_pred, output_dict=True)
+        df_report = pd.DataFrame(report).transpose()
+
+        return df_report
+
+
+    def conf_matrix_spot(self):
+        mod = self.set_pipeline(set_spotify = True)
+        y_pred = cross_val_predict(mod, self.X, self.y, cv = 5)
+
+        class_labels = self.y.astype('str').unique().tolist()
+
+        cf_mat = confusion_matrix(self.y, y_pred, labels = class_labels, normalize='true')
+
+
+        cmtx = pd.DataFrame(
+            cf_mat,
+            index=pd.MultiIndex.from_product([['True classes'], class_labels]),
+            columns=pd.MultiIndex.from_product([['Predicted classes'], class_labels]))
+
+        return cmtx
+
 
 
     def evaluate(self, X_test, y_test):
