@@ -71,6 +71,8 @@ def save_model(reg, client, model_name = 'model'):
     storage_location.upload_from_filename(local_path)
     print(f"uploaded model.joblib to gcp cloud storage under \n => {storage_location}")
 
+
+
 if __name__ == '__main__':
     model = initiate_model()
     X_train, X_val = generator()
