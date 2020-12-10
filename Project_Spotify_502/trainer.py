@@ -71,7 +71,7 @@ class Trainer():
                                 ('model_SVM', SVC(kernel = 'rbf'))
                             ])
 
-            else:
+            elif model =='xgboost':
 
                 params = {}
                 params['learning_rate'] = 0.2          # 0.01 - 0.2
@@ -101,7 +101,7 @@ class Trainer():
 
 
 
-    def run(self, set_spot = False, model = 'xgboost'):
+    def run(self, set_spot = True, model = 'xgboost'):
         """set and train the pipeline"""
         self.pipeline = self.set_pipeline(set_spotify = set_spot, model='xgboost')
         self.pipeline.fit(self.X, self.y)

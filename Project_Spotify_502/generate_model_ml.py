@@ -6,7 +6,7 @@ if __name__ == "__main__":
     print ('entering run')
 
     # Data loading
-    data = dl_data.get_train_set(balanced = False)
+    data = u.DataSpotify().get_train_set(balanced = False)
 
     X = data.drop(columns = ['main_genre'])
     y = data.main_genre
