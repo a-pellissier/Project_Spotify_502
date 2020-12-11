@@ -1,6 +1,10 @@
 
 run_api:
-	uvicorn api.fast:app --reload  # load web server with code autoreload
+	-@uvicorn api.fast:app --reload  # load web server with code autoreload
+
+redeploy_cloudrun:
+	-@gcloud run deploy --image eu.gcr.io/optimal-jigsaw-296709/project_spotify --platform managed --region europe-west1
+
 
 
 # ----------------------------------
