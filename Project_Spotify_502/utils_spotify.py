@@ -14,6 +14,7 @@ import csv
 import matplotlib.image
 import matplotlib.pyplot as plt
 import time
+from os.path import basename
 
 # path_x = '../raw_data/fma_medium'
 # path_y = '../raw_data/fma_metadata/tracks.csv'
@@ -35,7 +36,7 @@ class Data():
     path_x_dl_small = os.path.join('/',abs_path, 'raw_data/fma_small/fma_small')
     path_x_ml = os.path.join('/',abs_path, 'raw_data/fma_metadata/features.csv')
     path_y = os.path.join('/',abs_path, 'raw_data/fma_metadata/tracks.csv')
-    save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms')
+    save_path = os.path.join('/',abs_path, 'raw_data/generated_spectrograms_small')
 
     def __init__(self):
         return None
@@ -208,7 +209,7 @@ class Data_DL(Data):
             X_scaled = X_std * (max - min) + min
             return X_scaled
         image_path = f'{os.path.join(save_path, filename[-10:-4])}.{format_}'
-        if not os.path.exists(f'{image_path}.{format_}'):
+        if not os.path.exists(f'{image_path}'):
             temp = self.generator_spectogram(filename)
             if temp != None:
                 mel, sr  = temp
@@ -408,31 +409,62 @@ class DataSpotify():
         return None
 
 
+    def merge_datasets(self, path):
+
+        files = [f for f in os.listdir(path) if f.endswith('.csv')]
+
+        parent_file = basename(path)
+
+        head = [0, 1, 2] if parent_file == 'features' else 0
+
+        # No file
+        if len(files) ==0:
+            return None
+        """
+        # only one dataset
+        elif len(files) == 1:
+            return pd.read_csv(os.path.join(path, files[0]), header = head)
+        """
+
+        # merge data sets
+        cols = pd.read_csv(os.path.join(path, files[0]), header = head, nrows = 2).columns
+        df_data = pd.DataFrame(columns = cols)
+
+        for file in files:
+            extract = pd.read_csv(os.path.join(path, file), header = head)
+            df_data = pd.concat([df_data, extract])
+
+        return df_data
+
 
     def get_clean_genre(self, path):
 
         import warnings
         warnings.filterwarnings("ignore")
 
-        features = pd.read_csv(os.path.join(path, 'features.csv'), header = [0, 1, 2])
-        target = pd.read_csv(os.path.join(path, 'metadata.csv'))
+        # extract merged datasets
+        features = self.merge_datasets(os.path.join(path, 'features'))
+        target = self.merge_datasets(os.path.join(path, 'metadata'))
+
         #drop NA + new index
         features = features.dropna().set_index(('feature', 'statistics', 'number')).rename_axis('tid')
+
 
         target = target.set_index('Unnamed: 0')[['playlist_genre']]
         target = target.rename_axis('tid').rename(columns = {'playlist_genre':'main_genre'})
 
-        data = features.merge(target, how = 'inner', on = 'tid').reset_index(drop=True)
+        df_data = features.merge(target, how = 'inner', on = 'tid')
+        df_data = df_data.groupby(df_data.index).first()
 
-        X = data.drop(columns = ['main_genre'])
-        y = data.main_genre
+        X = df_data.drop(columns = ['main_genre'])
+        y = df_data.main_genre
 
         return X, y
 
 
 
     def get_spotify_data(self):
-        genres = [direct for direct in os.listdir(self.rawdata_path)]
+        genres = [direct for direct in os.listdir(self.rawdata_path) if direct != ".DS_Store"]
 
         dic_data = {}
         min_sample = float('inf')
@@ -442,7 +474,8 @@ class DataSpotify():
             # get dict of dataset / genre
             path = os.path.join(self.rawdata_path, genre)
             X, y = self.get_clean_genre(path)
-            data = pd.concat([X, y], axis = 1)
+
+            data = X.merge(y, how='inner', on='tid')
 
             dic_data[genre] = data
 
@@ -453,10 +486,11 @@ class DataSpotify():
 
 
     def generate_spot_data(self):
-
+        """
         if os.listdir(self.cleandata_path) != []:
             print('Please empty spotify_dataset folder before runing')
             return 'Please empty spotify_dataset folder before runing'
+            """
 
         data, n_obs = self.get_spotify_data()
         genres = list(data.keys())
@@ -465,25 +499,32 @@ class DataSpotify():
         full_set = pd.DataFrame(columns = data[genres[0]].columns)
 
         for genre in genres:
+
             extract = data[genre].sample(n = n_obs)
 
             train_set = pd.concat([train_set, extract])
             full_set = pd.concat([full_set, data[genre]])
 
+
+            train_set = train_set.groupby(train_set.index).first()
+            full_set = full_set.groupby(full_set.index).first()
+
         # Save train set
-        os.makedirs(os.path.join(self.cleandata_path, 'train'))
+        #os.makedirs(os.path.join(self.cleandata_path, 'train'))
         train_set.to_csv(os.path.join(self.cleandata_path, 'train', 'train_set.csv'), index = False)
         print('train_set saved')
 
         # Save full set
-        os.makedirs(os.path.join(self.cleandata_path, 'full'))
+        #os.makedirs(os.path.join(self.cleandata_path, 'full'))
         full_set.to_csv(os.path.join(self.cleandata_path, 'full', 'full_set.csv'), index = False)
-        print('full set saved')
+        print('full_set saved')
 
         return
 
-    def get_train_set(self):
-        path = os.path.join(self.cleandata_path, 'train','train_set.csv')
+    def get_train_set(self, balanced = True):
+        subset = 'train' if balanced == True else 'full'
+
+        path = os.path.join(self.cleandata_path, subset,f'{subset}_set.csv')
         return pd.read_csv(path)
 
 
