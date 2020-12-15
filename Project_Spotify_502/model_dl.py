@@ -4,6 +4,7 @@ from tensorflow.keras.backend import expand_dims
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 import joblib
+
 import os
 
 from PIL import ImageFile
@@ -32,9 +33,9 @@ def generator():
 def initiate_model():
     ### First convolution & max-pooling
     model = Sequential()
+
     model.add(layers.Conv2D(16, (3,3), activation = 'relu', input_shape=(128, 2582, 1)))
     model.add(layers.MaxPool2D(pool_size=(2,4)))
-
 
     model.add(layers.Conv2D(32, (3,3), activation = 'relu'))
     model.add(layers.MaxPool2D(pool_size=(2,4)))
@@ -76,3 +77,4 @@ if __name__ == '__main__':
     X_train, X_val = generator()
     model.fit(X_train, epochs=1, validation_data=X_val)
     save_model(model, X_train.storage_client)
+
